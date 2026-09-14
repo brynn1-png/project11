@@ -1,0 +1,35 @@
+{
+  "name": "inventory-system-demo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@phosphor-icons/react": "latest",
+    "@zxing/browser": "latest",
+    "@zxing/library": "latest",
+    "class-variance-authority": "latest",
+    "clsx": "latest",
+    "jsbarcode": "latest",
+    "motion": "^13.2.0",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "tailwind-merge": "latest"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "latest",
+    "@types/jsbarcode": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "eslint": "latest",
+    "eslint-config-next": "latest",
+    "tailwindcss": "latest",
+    "typescript": "latest"
+  }
+}
