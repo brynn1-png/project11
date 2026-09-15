@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-Next.js with React, TypeScript, Tailwind CSS, and shadcn/ui-style components. The presentation demo uses mock data with browser localStorage rather than a production database.
+Next.js with React, TypeScript, Tailwind CSS, shadcn/ui-style components, Supabase PostgreSQL, and Supabase Auth. Authentication and inventory reads are server-backed; atomic product, receiving, and sales write workflows are the next implementation phase.
 
 ## Users
 
@@ -16,7 +16,7 @@ The primary users are grocery-store owners, managers, inventory personnel, and c
 
 ## Product Purpose
 
-Inventory System demonstrates how grocery stores can register products, identify them through barcodes, automatically update quantities through stock-in and stock-out transactions, monitor inventory status, and produce useful inventory reports. The demo should help a client understand the proposed system before production development begins.
+Inventory System helps a single grocery-store location register products, identify them through barcodes, automatically update quantities through receiving and customer purchases, monitor stock and expiry status, and produce inventory and gross-profit reports.
 
 ## Positioning
 
@@ -29,26 +29,26 @@ The system is used on desktop and laptop computers with built-in or external web
 ## Capabilities and Constraints
 
 - Working name: Inventory System.
-- Demonstrates mock login, dashboard, products, inventory, barcode scanning and generation, stock-in, stock-out, transaction history, reports, and user roles.
+- Uses secure email-and-password authentication with administrator, manager, inventory staff, and cashier roles.
+- Supports dashboard, products, inventory, barcode scanning and generation, stock-in, customer purchases, transaction history, reports, and user management.
 - Camera scanning supports compatible cameras exposed by the browser and lets users choose among available devices.
 - Manual barcode entry remains available when camera scanning is unavailable or unreliable.
-- Demo changes persist only in browser localStorage and can be reset to the original sample data.
-- The demo does not include a production database, production authentication, supplier management, delivery tracking, multi-warehouse management, or advanced warehouse management.
+- Products, on-hand quantities, inventory activity, and administrator-visible user profiles are loaded from PostgreSQL. Product creation, receiving, and customer-purchase writes remain disabled until their atomic database workflows are implemented.
+- The system does not include supplier management, delivery tracking, multi-location management, advanced warehouse management, full accounting, or payment processing.
 - Camera access requires user permission and a secure browser context such as localhost or HTTPS.
 
 ## Evidence on Hand
 
-Project requirements are recorded in `req.md`. No real customer records, commercial claims, testimonials, logos, or production inventory data are available; presentation data must be clearly synthetic.
+Project requirements are recorded in `req.md`. No real customer records, commercial claims, testimonials, logos, or production inventory data are available; the repository seed is development-only and clearly identified as synthetic.
 
 ## Product Principles
 
 - Make stock movement immediately understandable.
 - Optimize scanning and quantity updates for speed and low error rates.
 - Keep inventory status visible and traceable.
-- Demonstrate realistic workflows without presenting mock infrastructure as production-ready.
+- Keep development seed records separate from production business data.
 - Work comfortably across desktop, webcam, and mobile-camera contexts.
 
 ## Accessibility & Inclusion
 
 The responsive web interface should support keyboard navigation, visible focus states, readable contrast, clear labels, non-color status cues, and touch targets suitable for handheld use.
-

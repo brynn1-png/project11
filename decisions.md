@@ -1,10 +1,45 @@
 # Decision Log
 
-## Current State Summary (Updated: 2026-09-14)
-- **Active Decision:** Demo architecture and presentation scope
+## Current State Summary (Updated: 2026-09-15)
+- **Active Decision:** Database-backed inventory read boundary
 - **Status:** 🟢 Confirmed
-- **Latest Decision:** Use restrained, purpose-driven animation without moving operational data
-- **Open Questions:** Production database, authentication provider, hosting, and final branding remain future decisions
+- **Latest Decision:** Replace browser mocks with protected read functions and keep development seed data explicitly separate from production data
+- **Open Questions:** Remaining workflow details, hosting, final branding, and live Supabase verification
+
+---
+
+## 2026-09-15 — Task #006: Inventory Read Models and Development Seed
+**Decision:** Load catalog quantities and activity through security-definer database functions that expose only role-appropriate operational fields.
+**Why:** Cashiers need current quantities but must not receive purchase cost or batch-detail access. A protected read model enforces that boundary consistently instead of weakening table policies.
+**Additional decisions:**
+- The repository seed is development-only, repeatable, and contains synthetic categories, products, costs, and batches.
+- Cashiers may see the shared product catalog and their own sales activity, while receiving activity and all-sales history remain limited to elevated roles.
+- Browser localStorage and hardcoded presentation records are removed completely.
+- Product creation, receiving, and sales controls remain disabled until atomic database functions are implemented.
+- On-hand selling-price totals are labeled retail value, not stock cost.
+**Alternative rejected:** Directly reading `inventory_batches` as every role, because that would expose purchase costs and batch metadata to cashiers.
+
+---
+
+## 2026-09-15 — Task #005: Production Foundation Architecture
+**Decision:** Use Supabase PostgreSQL and Auth with cookie-based SSR, Next.js Proxy token refresh, server-side user DTOs, explicit role permissions, database grants, and Row-Level Security.
+**Why:** Authentication and authorization must be enforced beyond the client interface, and the database schema must support secure multi-user operation and later atomic inventory transactions.
+**Alternatives considered:**
+- Custom password and session handling was rejected in favor of managed authentication.
+- Keeping the client-only simulated login was rejected because it provides no identity or access protection.
+- Granting direct table writes for stock, sales, and adjustments was deferred because those operations require atomic database functions that will be introduced in their implementation phases.
+**Additional decisions:**
+- Public registration is disabled; new accounts default to cashier and must be promoted by a trusted administrator.
+- Cost data is separated from general product data and protected for administrators and managers.
+- The application builds into an explicit Supabase setup state when credentials are absent.
+- Inventory screens remain labeled as demo data until Phase 2 replaces localStorage.
+
+---
+
+## 2026-09-15 — Task #004: Pending Work Tracking
+**Decision:** Use `pending.md` for work that cannot be completed until hardware, credentials, assets, decisions, or external access are available.
+**Why:** Hardware and external dependencies should remain visible without being mistaken for active implementation failures or completed verification.
+**Alternative rejected:** Keeping unavailable-device tests only in general progress notes, where their prerequisites and acceptance criteria would be harder to track.
 
 ---
 

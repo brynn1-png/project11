@@ -2,6 +2,7 @@ export type StockStatus = "In Stock" | "Low Stock" | "Out of Stock";
 
 export type Product = {
   id: string;
+  databaseId: string;
   name: string;
   barcode: string;
   category: string;
@@ -19,11 +20,18 @@ export type StockTransaction = {
   barcode: string;
   type: "Stock In" | "Stock Out";
   quantity: number;
-  previousStock: number;
-  newStock: number;
+  previousStock: number | null;
+  newStock: number | null;
   user: string;
   createdAt: string;
   notes?: string;
+};
+
+export type UserProfile = {
+  id: string;
+  fullName: string;
+  role: import("@/lib/auth/permissions").AppRole;
+  status: "active" | "inactive";
 };
 
 export function getStockStatus(product: Product): StockStatus {
@@ -31,4 +39,3 @@ export function getStockStatus(product: Product): StockStatus {
   if (product.stock <= product.minimumStock) return "Low Stock";
   return "In Stock";
 }
-
