@@ -9,6 +9,7 @@ export type Permission =
   | "products:archive"
   | "stock:receive"
   | "sales:record"
+  | "sales:verify"
   | "adjustments:manage"
   | "transactions:view_all"
   | "reports:view_costs"
@@ -17,12 +18,12 @@ export type Permission =
 const ROLE_PERMISSIONS: Record<AppRole, ReadonlySet<Permission>> = {
   administrator: new Set([
     "dashboard:view", "products:view", "products:manage", "products:archive",
-    "stock:receive", "sales:record", "adjustments:manage", "transactions:view_all",
+    "stock:receive", "sales:record", "sales:verify", "adjustments:manage", "transactions:view_all",
     "reports:view_costs", "users:manage",
   ]),
   manager: new Set([
     "dashboard:view", "products:view", "products:manage", "products:archive",
-    "stock:receive", "sales:record", "adjustments:manage", "transactions:view_all",
+    "stock:receive", "sales:record", "sales:verify", "adjustments:manage", "transactions:view_all",
     "reports:view_costs",
   ]),
   inventory_staff: new Set([
@@ -41,4 +42,3 @@ export function formatRole(role: AppRole) {
     ? "Inventory Staff"
     : role.charAt(0).toUpperCase() + role.slice(1);
 }
-

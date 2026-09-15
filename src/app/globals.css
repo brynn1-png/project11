@@ -7,7 +7,14 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
   --color-primary: var(--accent);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--muted);
+  --color-secondary-foreground: var(--foreground);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: #ffffff;
+  --color-ring: var(--ring);
 }
 
 :root {

@@ -18,8 +18,14 @@ describe("role permissions", () => {
     expect(hasPermission("cashier", "reports:view_costs")).toBe(false);
   });
 
+  it("limits sales verification to administrators and managers", () => {
+    expect(hasPermission("administrator", "sales:verify")).toBe(true);
+    expect(hasPermission("manager", "sales:verify")).toBe(true);
+    expect(hasPermission("inventory_staff", "sales:verify")).toBe(false);
+    expect(hasPermission("cashier", "sales:verify")).toBe(false);
+  });
+
   it("formats the inventory staff role for display", () => {
     expect(formatRole("inventory_staff")).toBe("Inventory Staff");
   });
 });
-

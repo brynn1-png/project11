@@ -3,13 +3,15 @@
 import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
-  ArrowDown, ArrowUp, Barcode, Bell, CaretRight, ChartBar,
+  ArrowCounterClockwise, ArrowDown, ArrowUp, Barcode, Bell, CaretRight, ChartBar,
   Check, CirclesFour, ClockCounterClockwise, DownloadSimple, List, MagnifyingGlass,
-  Package, Plus, Printer, Scan, SignOut, Storefront, Users, Warning, X,
+  Package, Plus, Printer, Scan, ShoppingCart, SignOut, Storefront, Users, Warning, X,
 } from "@phosphor-icons/react";
 import { logout } from "@/app/login/actions";
-import { CameraScanner } from "@/components/camera-scanner";
 import { useInventory } from "@/components/inventory-provider";
+import { SalesView } from "@/components/sales-view";
+import { ReturnsView } from "@/components/returns-view";
+import { SalesVerificationView } from "@/components/sales-verification-view";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -18,34 +20,38 @@ import { getStockStatus, type Product, type StockTransaction, type UserProfile }
 import { formatRole, hasPermission, type Permission } from "@/lib/auth/permissions";
 import type { CurrentUser } from "@/lib/auth/current-user";
 
-type View = "dashboard" | "products" | "scanner" | "stock-in" | "stock-out" | "inventory" | "transactions" | "reports" | "users";
+type View = "dashboard" | "products" | "sales" | "returns" | "stock-in" | "inventory" | "transactions" | "sales-review" | "reports" | "users";
 
 const NAV_ITEMS: { id: View; label: string; icon: typeof CirclesFour }[] = [
   { id: "dashboard", label: "Dashboard", icon: CirclesFour },
   { id: "products", label: "Products", icon: Package },
-  { id: "scanner", label: "Barcode Scanner", icon: Scan },
+  { id: "sales", label: "Sales", icon: ShoppingCart },
+  { id: "returns", label: "Returns", icon: ArrowCounterClockwise },
   { id: "stock-in", label: "Stock In", icon: ArrowDown },
-  { id: "stock-out", label: "Stock Out", icon: ArrowUp },
   { id: "inventory", label: "Inventory", icon: Storefront },
   { id: "transactions", label: "Transactions", icon: ClockCounterClockwise },
+  { id: "sales-review", label: "Sales Verification", icon: Check },
   { id: "reports", label: "Reports", icon: ChartBar },
   { id: "users", label: "User Management", icon: Users },
 ];
 
 const VIEW_PERMISSIONS: Partial<Record<View, Permission>> = {
   "stock-in": "stock:receive",
-  "stock-out": "sales:record",
+  sales: "sales:record",
+  returns: "sales:record",
+  "sales-review": "sales:verify",
   users: "users:manage",
 };
 
 const VIEW_META: Record<View, { title: string; description: string }> = {
   dashboard: { title: "Dashboard", description: "Here is today’s inventory activity and the items that need attention." },
   products: { title: "Products", description: "Register products, assign barcodes, and keep product details organized." },
-  scanner: { title: "Barcode scanner", description: "Identify products with any compatible camera or enter a barcode manually." },
+  sales: { title: "Sales", description: "Scan products, enter quantities, and confirm one complete customer sale." },
+  returns: { title: "Returns", description: "Record returned items against their original sale for manager review." },
   "stock-in": { title: "Stock in", description: "Record products received and update available quantities immediately." },
-  "stock-out": { title: "Stock out", description: "Record inventory releases with automatic stock validation." },
   inventory: { title: "Inventory", description: "Review every product’s current quantity and stock status." },
   transactions: { title: "Transactions", description: "Trace each change made to inventory quantities." },
+  "sales-review": { title: "Sales verification", description: "Review returns and confirm the store’s recorded activity for each business day." },
   reports: { title: "Reports", description: "Review inventory health and export current records." },
   users: { title: "User management", description: "Review authenticated users, roles, and account status." },
 };
@@ -63,6 +69,7 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
   const [mobileNav, setMobileNav] = useState(false);
   const [toast, setToast] = useState("");
   const reduceMotion = useReducedMotion();
+  const { dataSource, lastSyncedAt } = useInventory();
 
   function notify(message: string) {
     setToast(message);
@@ -80,7 +87,7 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
           <button className="grid size-11 place-items-center rounded-xl hover:bg-[var(--muted)] lg:hidden" onClick={() => setMobileNav(true)} aria-label="Open navigation"><List size={22} /></button>
           <div className="hidden items-center gap-2 text-sm text-[var(--muted-foreground)] lg:flex"><span>Inventory System</span><CaretRight size={14} /><span className="font-semibold text-[var(--foreground)]">{meta.title}</span></div>
           <div className="ml-auto flex items-center gap-2">
-            <span className="hidden rounded-lg bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-bold text-[var(--accent-strong)] sm:inline">{dataError ? "Data unavailable" : "Live inventory"}</span>
+            <span className="hidden rounded-lg bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-bold text-[var(--accent-strong)] sm:inline" title={lastSyncedAt ? `Last synchronized ${formatDate(lastSyncedAt)}` : undefined}>{dataSource === "live" ? "Live inventory" : dataSource === "cached" ? "Cached inventory" : "Data unavailable"}</span>
             <button className="relative grid size-11 place-items-center rounded-xl text-[var(--muted-foreground)] hover:bg-[var(--muted)]" aria-label="Notifications"><Bell size={20} /><span className="absolute right-2.5 top-2.5 size-1.5 rounded-full bg-red-500" /></button>
             <div className="ml-1 grid size-9 place-items-center rounded-xl bg-[#24483a] text-sm font-bold text-white">{initials(currentUser.fullName)}</div>
           </div>
@@ -91,16 +98,17 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
             <div><h1 className="text-2xl font-bold tracking-[-0.025em] sm:text-[1.8rem]">{pageTitle}</h1><p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--muted-foreground)]">{meta.description}</p></div>
           </div>
 
-          {dataError && <div role="alert" className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-800">{dataError}</div>}
+          {dataError && <div role="alert" className={cn("mb-6 rounded-2xl border p-4 text-sm font-medium", dataSource === "cached" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-red-200 bg-red-50 text-red-800")}>{dataSource === "cached" ? "Live inventory is unavailable. You can search the last synchronized catalog, but sales cannot be confirmed until the connection returns." : dataError}</div>}
 
           <div key={view} className="view-enter">
             {view === "dashboard" && <Dashboard onNavigate={setView} />}
             {view === "products" && <ProductsView canManage={hasPermission(currentUser.role, "products:manage")} />}
-            {view === "scanner" && <ScannerView onNavigate={setView} notify={notify} />}
+            {view === "sales" && <SalesView notify={notify} />}
+            {view === "returns" && <ReturnsView notify={notify} />}
             {view === "stock-in" && <StockMovementView type="Stock In" />}
-            {view === "stock-out" && <StockMovementView type="Stock Out" />}
             {view === "inventory" && <InventoryView />}
             {view === "transactions" && <TransactionsView />}
+            {view === "sales-review" && <SalesVerificationView notify={notify} />}
             {view === "reports" && <ReportsView notify={notify} />}
             {view === "users" && <UsersView users={users} />}
           </div>
@@ -161,7 +169,7 @@ function Dashboard({ onNavigate }: { onNavigate: (view: View) => void }) {
       <div className="panel p-5"><div className="flex items-center justify-between"><div><h2 className="font-bold">Needs attention</h2><p className="mt-1 text-xs text-[var(--muted-foreground)]">At or below minimum level</p></div><span className="grid size-9 place-items-center rounded-xl bg-amber-50 text-amber-700"><Warning size={19} weight="fill" /></span></div><div className="mt-5 flex flex-col gap-1">{[...out, ...low].slice(0, 5).map((product) => <button key={product.id} onClick={() => onNavigate("stock-in")} className="flex min-h-14 w-full items-center justify-between rounded-xl px-2 text-left hover:bg-[var(--muted)]"><div className="min-w-0"><p className="truncate text-sm font-semibold">{product.name}</p><p className="text-xs text-[var(--muted-foreground)]">Minimum {product.minimumStock} {product.unit}s</p></div><div className="ml-3 text-right"><p className={cn("font-bold", product.stock === 0 ? "text-red-600" : "text-amber-700")}>{product.stock}</p><p className="text-[11px] text-[var(--muted-foreground)]">on hand</p></div></button>)}{low.length + out.length === 0 && <p className="py-8 text-center text-sm text-[var(--muted-foreground)]">All products are above their minimum stock level.</p>}</div><Button className="mt-5 w-full" disabled title="Stock receiving will be enabled with the atomic database workflow."><ArrowDown size={17} />Record stock in</Button></div>
     </section>
     <section className="grid gap-5 lg:grid-cols-[.8fr_1.2fr]">
-      <div className="rounded-2xl bg-[#163a2d] p-6 text-white"><div className="flex items-start justify-between"><div><h2 className="text-lg font-bold">Scan and update</h2><p className="mt-2 max-w-sm text-sm leading-6 text-white/65">Use a webcam or phone camera to find an item, then move directly into stock in or stock out.</p></div><Scan size={28} className="text-emerald-300" /></div><Button className="mt-7 bg-emerald-300 text-[#15362a] hover:bg-emerald-200" onClick={() => onNavigate("scanner")}>Open scanner<CaretRight size={16} /></Button></div>
+      <div className="rounded-2xl bg-[#163a2d] p-6 text-white"><div className="flex items-start justify-between"><div><h2 className="text-lg font-bold">Start a sale</h2><p className="mt-2 max-w-sm text-sm leading-6 text-white/65">Scan products, enter quantities, and confirm the complete customer sale in one workflow.</p></div><Scan size={28} className="text-emerald-300" /></div><Button className="mt-7 bg-emerald-300 text-[#15362a] hover:bg-emerald-200" onClick={() => onNavigate("sales")}>Open sales<CaretRight size={16} /></Button></div>
       <div className="panel p-5"><h2 className="font-bold">Inventory distribution</h2><p className="mt-1 text-xs text-[var(--muted-foreground)]">Products grouped by current status</p><div className="mt-7 flex h-3 overflow-hidden rounded-full bg-[var(--muted)]"><div className="bg-emerald-600" style={{ width: `${products.length === 0 ? 0 : products.filter((p) => getStockStatus(p) === "In Stock").length / products.length * 100}%` }} /><div className="bg-amber-400" style={{ width: `${products.length === 0 ? 0 : low.length / products.length * 100}%` }} /><div className="bg-red-500" style={{ width: `${products.length === 0 ? 0 : out.length / products.length * 100}%` }} /></div><div className="mt-5 grid grid-cols-3 gap-3 text-sm"><div><p className="font-bold">{products.length - low.length - out.length}</p><p className="text-xs text-[var(--muted-foreground)]">In stock</p></div><div><p className="font-bold">{low.length}</p><p className="text-xs text-[var(--muted-foreground)]">Low stock</p></div><div><p className="font-bold">{out.length}</p><p className="text-xs text-[var(--muted-foreground)]">Out of stock</p></div></div></div>
     </section>
   </div>;
@@ -177,12 +185,6 @@ function ProductsView({ canManage }: { canManage: boolean }) {
     {canManage && <p id="product-write-status" className="text-xs text-[var(--muted-foreground)]">Product creation will be enabled with the atomic database write workflow.</p>}
     <div className="panel overflow-hidden"><div className="overflow-x-auto"><table className="data-table min-w-[850px]"><thead><tr><th>Product</th><th>Barcode</th><th>Category</th><th>Price</th><th>Quantity</th><th>Status</th></tr></thead><tbody>{filtered.map((p) => <tr key={p.id}><td><p className="font-semibold">{p.name}</p><p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{p.id}</p></td><td className="font-mono text-xs">{p.barcode}</td><td>{p.category}</td><td>{peso(p.price)}</td><td><strong>{p.stock}</strong> <span className="text-xs text-[var(--muted-foreground)]">{p.unit}s</span></td><td><StatusBadge status={getStockStatus(p)} /></td></tr>)}</tbody></table></div>{filtered.length === 0 && <EmptyState title={products.length === 0 ? "No products yet" : "No matching products"} text={products.length === 0 ? "Run the development seed or add your first product when database writes are enabled." : "Try a different product name, barcode, or category."} />}</div>
   </div>;
-}
-
-function ScannerView({ onNavigate, notify }: { onNavigate: (view: View) => void; notify: (message: string) => void }) {
-  const { products } = useInventory(); const [barcode, setBarcode] = useState(""); const [found, setFound] = useState<Product | null>(null); const [searched, setSearched] = useState(false);
-  function lookup(value: string) { const clean = value.trim(); setBarcode(clean); const match = products.find((p) => p.barcode === clean) || null; setFound(match); setSearched(true); if (match) notify(`${match.name} identified.`); }
-  return <div className="grid gap-5 xl:grid-cols-[1.05fr_.95fr]"><div className="panel p-5 sm:p-6"><CameraScanner onDetected={lookup} /></div><div className="grid content-start gap-5"><div className="panel p-5 sm:p-6"><h2 className="font-bold">Manual barcode entry</h2><p className="mt-1 text-sm text-[var(--muted-foreground)]">Use this for a USB scanner or when camera scanning is unavailable.</p><form className="mt-5 flex gap-2" onSubmit={(e) => { e.preventDefault(); lookup(barcode); }}><Input autoFocus value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder="Scan or type barcode" aria-label="Barcode" /><Button type="submit" className="shrink-0"><MagnifyingGlass size={17} />Find</Button></form><div className="mt-3 flex flex-wrap gap-2">{products.slice(0, 3).map((p) => <button key={p.id} onClick={() => lookup(p.barcode)} className="min-h-9 rounded-lg bg-[var(--muted)] px-3 text-xs font-semibold hover:bg-[var(--accent-soft)]">Try {p.barcode}</button>)}</div></div>{found ? <div className="view-enter panel overflow-hidden"><div className="bg-[#e5f2ed] p-5"><p className="text-xs font-bold text-[var(--accent)]">Product identified</p><h2 className="mt-2 text-xl font-bold">{found.name}</h2><p className="mt-1 font-mono text-xs text-[var(--muted-foreground)]">{found.barcode}</p></div><div className="grid grid-cols-2 gap-4 p-5"><div><p className="text-xs text-[var(--muted-foreground)]">Current stock</p><p className="mt-1 text-2xl font-bold">{found.stock} <span className="text-sm font-medium">{found.unit}s</span></p></div><div><p className="text-xs text-[var(--muted-foreground)]">Status</p><div className="mt-2"><StatusBadge status={getStockStatus(found)} /></div></div></div><div className="flex gap-2 border-t border-[var(--border)] p-5"><Button className="flex-1" onClick={() => onNavigate("stock-in")}><ArrowDown size={17} />Stock in</Button><Button className="flex-1" variant="secondary" onClick={() => onNavigate("stock-out")}><ArrowUp size={17} />Stock out</Button></div></div> : searched && <div className="view-enter panel"><EmptyState title="Barcode not found" text="Check the number or register this product before recording stock movement." /></div>}</div></div>;
 }
 
 function StockMovementView({ type }: { type: "Stock In" | "Stock Out" }) {
