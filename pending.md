@@ -1,8 +1,8 @@
 # Pending Work
 
-## Current State Summary (Updated: 2026-09-15)
+## Current State Summary (Updated: 2026-09-16)
 - **Open items:** 6
-- **Highest priority:** Apply and verify the latest inventory migration and development seed
+- **Highest priority:** Apply and verify the Task #007 sales-workflow migrations
 - **Purpose:** Track work that cannot be completed until required hardware, credentials, assets, decisions, or external access become available
 
 ---
@@ -46,15 +46,16 @@
 ---
 
 ## PND-004 — Production Database and Authentication Credentials
-**Status:** Partially complete — latest migration and seed pending
+**Status:** Partially complete — development foundation verified; sales-workflow migrations pending
 **Added:** 2026-09-15
-**Reason:** The hosted Supabase project, initial schema, administrator profile, and sign-in are working. This checkout is not linked to the hosted project, and Docker remains unavailable for a local database reset, so the new inventory read-model migration and development seed have not been applied.
-**Prerequisites:** Apply `supabase/migrations/20260915000200_inventory_read_models.sql`, then run `supabase/seed.sql` only against the development project.
+**Reason:** The hosted Supabase project, administrator sign-in, inventory read models, and development seed are verified. This checkout is not linked to the hosted project and Docker remains unavailable, so Task #007 migrations still require manual dashboard application.
+**Prerequisites:** After Task #007 repository verification, apply `supabase/migrations/20260915000300_sales_workflow.sql` and `supabase/migrations/20260915000400_sales_verification_and_returns.sql` to the development project in that order.
 **Acceptance criteria:**
 - Development and production environments are separate.
 - Credentials are stored outside source control.
-- The committed migration and seed data apply successfully.
-- Database connectivity and authentication are verified in each environment.
+- Task #006 migration and development seed apply successfully. (Completed 2026-09-16)
+- Task #007 sales migrations apply successfully to development.
+- Database connectivity and authentication are verified in each deployed environment.
 
 ---
 

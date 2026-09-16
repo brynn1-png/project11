@@ -1,10 +1,10 @@
 # Results Log
 
-## Current State Summary (Updated: 2026-09-15)
-- **Active Task:** Task #006 - Database-backed inventory seed and reads
+## Current State Summary (Updated: 2026-09-16)
+- **Active Task:** Task #007 - Receipt-based sales, returns, verification, and catalog caching
 - **Status:** 🟡 In Progress
-- **Latest Result:** Presentation data is removed and the repository now reads inventory from protected Supabase functions; hosted migration and seed application remain pending
-- **Verification:** 10 tests, ESLint, TypeScript, production build, interface detector, and diff checks passed
+- **Latest Result:** Task #006 is complete: the hosted development project has protected inventory read models and the repeatable seed data, and the signed-in dashboard shows 10 products with 397 units
+- **Verification:** 14 tests, ESLint, TypeScript, production build, hosted RPC presence/security, and signed-in seed totals passed
 
 ---
 
@@ -20,13 +20,15 @@
 - Added loading, empty, database-error, and unavailable-write states
 - Reports now export live-loaded records as `inventory-report.csv`
 **Verification results:**
-- `npm run test`: 10 tests passed across 3 files
+- `npm run test`: 14 tests passed across 4 files on the current working tree
 - `npm run lint`: passed
 - `npx tsc --noEmit`: passed
 - `npm run build`: passed with `/`, `/login`, and Proxy compiled
 - Impeccable detector: no findings on changed UI targets
 - `git diff --check`: passed apart from expected Windows line-ending warnings
-**Remaining limitation:** SQL execution was not locally validated because Docker is unavailable, and the hosted project is not linked to this checkout. The hosted migration and seed still need to be applied and visually verified.
+- Hosted API verification: `get_inventory_catalog` and `get_inventory_activity` exist and return PostgreSQL `42501` to anonymous callers, confirming the intended authenticated-only grants
+- Signed-in dashboard verification: 10 seeded products and 397 units on hand
+**Remaining limitation:** Docker remains unavailable for a local Supabase reset, but the Task #006 migration and seed are applied and verified on the hosted development project.
 
 ---
 

@@ -1,16 +1,16 @@
 # Progress Log
 
-## Current State Summary (Updated: 2026-09-15)
-- **Active Task:** Task #006 - Replace presentation data with database seed and reads
+## Current State Summary (Updated: 2026-09-16)
+- **Active Task:** Task #007 - Receipt-based sales, returns, verification, and catalog caching
 - **Status:** 🟡 In Progress
-- **Next Action:** Apply migration `20260915000200_inventory_read_models.sql` and `supabase/seed.sql` to the hosted development project, then verify the live inventory screens
-- **Blockers:** The local Supabase CLI is not linked to the hosted project and Docker is unavailable for a local database reset
-- **Last Completed:** Task #005 on 2026-09-15
+- **Next Action:** Complete Task #007 verification and apply its sales-workflow migrations to the hosted development project
+- **Blockers:** Hosted migrations require manual dashboard application because the local Supabase CLI is not linked and no controllable signed-in browser is available
+- **Last Completed:** Task #006 on 2026-09-16
 
 ---
 
 ## 2026-09-15 — Task #006: Database-Backed Inventory Seed and Reads
-**Status:** 🟡 In Progress
+**Status:** 🟢 Done
 **Summary:** Removed presentation-only browser data, added repeatable development seed records, and connected inventory screens to protected Supabase read models.
 **Steps completed:**
 - [x] Removed hardcoded products, transactions, users, localStorage persistence, and demo reset behavior
@@ -20,9 +20,10 @@
 - [x] Added server-side inventory loading plus loading, empty, and recovery states
 - [x] Disabled product and stock mutation controls until atomic database write workflows are implemented
 - [x] Passed tests, lint, TypeScript, production build, interface detector, and diff checks
-- [ ] Apply the new migration and seed to the hosted development database
-- [ ] Verify live data with the administrator account
-**Notes:** The repository is ready, but hosted-database application remains an external step because this checkout is not linked to Supabase.
+- [x] Applied the inventory read-model migration and development seed to the hosted development database
+- [x] Verified the hosted RPCs exist and enforce authenticated-only execution
+- [x] Confirmed the seeded dashboard contains 10 products and 397 units on hand
+**Notes:** Task #006 is complete. The user applied the SQL through the Supabase dashboard because this checkout is not linked to the hosted project.
 
 ---
 

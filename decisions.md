@@ -1,10 +1,10 @@
 # Decision Log
 
-## Current State Summary (Updated: 2026-09-15)
-- **Active Decision:** Database-backed inventory read boundary
+## Current State Summary (Updated: 2026-09-16)
+- **Active Decision:** Receipt-based sales and verification workflow
 - **Status:** 🟢 Confirmed
-- **Latest Decision:** Replace browser mocks with protected read functions and keep development seed data explicitly separate from production data
-- **Open Questions:** Remaining workflow details, hosting, final branding, and live Supabase verification
+- **Latest Decision:** Task #006 remains based on protected inventory read functions and repeatable development-only seed data; its hosted development deployment is verified
+- **Open Questions:** Task #007 hosted migration verification, hosting, final branding, and physical scanner testing
 
 ---
 
@@ -18,6 +18,8 @@
 - Product creation, receiving, and sales controls remain disabled until atomic database functions are implemented.
 - On-hand selling-price totals are labeled retail value, not stock cost.
 **Alternative rejected:** Directly reading `inventory_batches` as every role, because that would expose purchase costs and batch metadata to cashiers.
+
+**Hosted verification decision:** Treat the development deployment as complete only after the protected functions were visible through the hosted API, anonymous execution was denied as designed, and the signed-in dashboard showed all 10 seeded products with 397 units.
 
 ---
 
