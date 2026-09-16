@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { ArrowCounterClockwise, MagnifyingGlass, WarningCircle } from "@phosphor-icons/react";
-import { findSaleForReturn, requestSaleReturn, type ReturnableSaleItem } from "@/app/sales/actions";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { ArrowCounterClockwise, MagnifyingGlass, Receipt, WarningCircle } from "@phosphor-icons/react";
+import { findSaleForReturn, listRecentSales, requestSaleReturn, type RecentSaleSummary, type ReturnableSaleItem } from "@/app/sales/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type ReturnLine = { quantity: number; disposition: "restock" | "damaged" | "expired" };
 
@@ -18,12 +21,31 @@ export function ReturnsView({ notify }: { notify: (message: string) => void }) {
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
   const [message, setMessage] = useState("");
+  const [recentSales, setRecentSales] = useState<RecentSaleSummary[]>([]);
+  const [salesSearch, setSalesSearch] = useState("");
+  const [salesMessage, setSalesMessage] = useState("");
+  const [recentLoading, setRecentLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
 
-  function lookup() {
+  useEffect(() => {
+    listRecentSales().then((result) => {
+      if (result.ok) setRecentSales(result.sales);
+      else setSalesMessage(result.message);
+      setRecentLoading(false);
+    });
+  }, []);
+
+  const shownSales = useMemo(() => {
+    const query = salesSearch.trim().toLowerCase();
+    if (!query) return recentSales;
+    return recentSales.filter((sale) => `#${sale.saleNumber} ${sale.cashierName}`.toLowerCase().includes(query));
+  }, [recentSales, salesSearch]);
+
+  function lookup(selectedSaleNumber = Number(saleNumber)) {
     setMessage("");
+    setSaleNumber(String(selectedSaleNumber));
     startTransition(async () => {
-      const result = await findSaleForReturn(Number(saleNumber));
+      const result = await findSaleForReturn(selectedSaleNumber);
       if (!result.ok) { setItems([]); return setMessage(result.message); }
       setItems(result.items);
       setLines(Object.fromEntries(result.items.map((item) => [item.saleItemId, { quantity: 0, disposition: "restock" as const }])));
@@ -40,6 +62,7 @@ export function ReturnsView({ notify }: { notify: (message: string) => void }) {
       const result = await requestSaleReturn({ saleNumber: Number(saleNumber), items: selected, reason, notes });
       if (!result.ok) return setMessage(result.message);
       notify(`Return #${result.returnNumber} submitted for manager review.`);
+      setRecentSales((current) => current.map((sale) => sale.saleNumber === saleNumber ? { ...sale, hasPendingReturn: true } : sale));
       setItems([]); setLines({}); setReason(""); setNotes(""); setSaleNumber("");
     });
   }
@@ -47,9 +70,27 @@ export function ReturnsView({ notify }: { notify: (message: string) => void }) {
   return (
     <div className="mx-auto grid max-w-5xl gap-5">
       <Card className="border-[var(--border)] bg-[var(--surface)] shadow-none">
+        <CardHeader><CardTitle>Recent sales</CardTitle><CardDescription>Select a completed sale or search the latest 50 by sale number or cashier.</CardDescription></CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="relative">
+            <MagnifyingGlass className="absolute left-3.5 top-3.5 text-[var(--muted-foreground)]" size={18} />
+            <Input className="pl-10" value={salesSearch} onChange={(event) => setSalesSearch(event.target.value)} placeholder="Search sale number or cashier" aria-label="Search recent sales" />
+          </div>
+          {salesMessage && <Alert variant="destructive"><WarningCircle /><AlertTitle>Recent sales unavailable</AlertTitle><AlertDescription>{salesMessage}</AlertDescription></Alert>}
+          {recentLoading ? <div className="flex flex-col gap-2"><Skeleton className="h-20 rounded-xl" /><Skeleton className="h-20 rounded-xl" /><Skeleton className="h-20 rounded-xl" /></div> : shownSales.length === 0 ? <Empty className="min-h-32 border"><EmptyHeader><EmptyMedia variant="icon"><Receipt /></EmptyMedia><EmptyTitle>{recentSales.length === 0 ? "No completed sales yet" : "No matching sales"}</EmptyTitle><EmptyDescription>{recentSales.length === 0 ? "Confirmed sales will appear here." : "Try another sale number or cashier name."}</EmptyDescription></EmptyHeader></Empty> : <div className="flex max-h-[28rem] flex-col gap-2 overflow-y-auto pr-1">{shownSales.map((sale) => {
+            const unavailable = sale.returnableQuantity === 0 || sale.hasPendingReturn;
+            return <div key={sale.saleNumber} className="flex flex-col gap-4 rounded-xl border border-[var(--border)] p-4 sm:flex-row sm:items-center">
+              <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold">Sale #{sale.saleNumber}</p>{sale.hasPendingReturn && <Badge variant="outline">Return pending</Badge>}</div><p className="mt-1 truncate text-sm text-[var(--muted-foreground)]">{new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short" }).format(new Date(sale.soldAt))} · {sale.cashierName}</p><p className="mt-2 text-sm">{sale.itemCount} item{sale.itemCount === 1 ? "" : "s"} · {new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(sale.totalAmount)} · {sale.returnableQuantity} returnable</p></div>
+              <Button type="button" variant={unavailable ? "secondary" : "default"} disabled={isPending || unavailable} onClick={() => lookup(Number(sale.saleNumber))}>{unavailable ? sale.hasPendingReturn ? "Review pending" : "Fully returned" : "Select sale"}</Button>
+            </div>;
+          })}</div>}
+        </CardContent>
+      </Card>
+
+      <Card className="border-[var(--border)] bg-[var(--surface)] shadow-none">
         <CardHeader><CardTitle>Find the original sale</CardTitle><CardDescription>Returns remain linked to the original sale and do not change its history.</CardDescription></CardHeader>
         <CardContent>
-          <form className="flex flex-col gap-3 sm:flex-row" onSubmit={(event) => { event.preventDefault(); lookup(); }}>
+          <form className="flex flex-col gap-3 sm:flex-row" onSubmit={(event) => { event.preventDefault(); lookup(Number(saleNumber)); }}>
             <Input value={saleNumber} onChange={(event) => setSaleNumber(event.target.value)} inputMode="numeric" placeholder="Sale number" aria-label="Sale number" />
             <Button type="submit" disabled={isPending}><MagnifyingGlass data-icon="inline-start" />{isPending ? "Searching…" : "Find sale"}</Button>
           </form>

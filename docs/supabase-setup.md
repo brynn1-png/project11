@@ -14,9 +14,22 @@ npx supabase link --project-ref YOUR_PROJECT_REF
 npx supabase db push
 ```
 
-The migrations create the application schema, role helpers, profile trigger, expiry validation, protected inventory read models, indexes, grants, and Row-Level Security policies. `supabase/seed.sql` contains repeatable synthetic development data and must not be applied to a production database.
+The migrations create the application schema, role helpers, profile trigger, expiry validation, protected inventory read models, product registration, barcode aliases, atomic stock receiving, receipt-based sales, returns, business-day verification, indexes, grants, and Row-Level Security policies. `supabase/seed.sql` contains repeatable synthetic development data and must not be applied to a production database.
 
-For a hosted development project, apply both migration files first. Then open the SQL editor and run `supabase/seed.sql` if you want the ten development products and their initial inventory batches. The application will show a recovery message until the inventory read-model migration has been applied.
+For a hosted development project, apply the migrations in filename order:
+
+1. `20260915000100_initial_production_schema.sql`
+2. `20260915000200_inventory_read_models.sql`
+3. `20260915000300_sales_workflow.sql`
+4. `20260915000400_sales_verification_and_returns.sql`
+5. `20260916000100_manila_business_date.sql`
+6. `20260916000200_fix_sale_total_initialization.sql`
+7. `20260916000300_recent_sales_picker.sql`
+8. `20260916000400_product_registration_and_receiving.sql`
+
+Then open the SQL editor and run `supabase/seed.sql` if you want the ten development products and their initial inventory batches. The seed is repeatable but resets those fixed development batches to their declared quantities, so do not rerun it after recording test sales unless that reset is intentional.
+
+Sales are written through protected database functions rather than direct table updates. Confirming a sale writes its receipt and line items, snapshots costs, allocates non-expired batches using FEFO, and deducts inventory in one transaction. Returns and business-day verification likewise use protected functions so approval and stock restoration remain auditable.
 
 ## Create the first administrator
 

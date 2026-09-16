@@ -52,6 +52,7 @@ export type ReturnableSaleItem = {
 };
 
 type ReturnableSaleRow = { sale_item_id: string; product_name: string; barcode: string; quantity_sold: number | string; quantity_returned: number | string; unit_price: number | string; sold_at: string };
+type RecentSaleRow = { sale_number: number | string; sold_at: string; cashier_name: string; item_count: number | string; total_amount: number | string; returnable_quantity: number | string; has_pending_return: boolean };
 type BusinessDayRow = { id: string; business_date: string; status: BusinessDaySummary["status"]; sale_count: number | string; item_count: number | string; gross_total: number | string; return_count: number | string };
 type PendingReturnRow = { id: string; business_day_id: string; return_number: number | string; sale_number: number | string; reason: string; requested_by_name: string; requested_at: string; item_count: number | string; items: Array<{ product_name: string; quantity: number | string; disposition: "restock" | "damaged" | "expired" }> };
 
@@ -71,6 +72,43 @@ export async function findSaleForReturn(saleNumber: number): Promise<{ ok: true;
     unitPrice: Number(row.unit_price),
     soldAt: row.sold_at,
   })) };
+}
+
+export type RecentSaleSummary = {
+  saleNumber: string;
+  soldAt: string;
+  cashierName: string;
+  itemCount: number;
+  totalAmount: number;
+  returnableQuantity: number;
+  hasPendingReturn: boolean;
+};
+
+export async function listRecentSales(): Promise<{ ok: true; sales: RecentSaleSummary[] } | { ok: false; message: string }> {
+  const user = await getCurrentUser();
+  if (!user || !hasPermission(user.role, "sales:record")) {
+    return { ok: false, message: "Your account is not allowed to view sales for returns." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_recent_sales", { p_limit: 50 });
+  if (error) {
+    console.error("Recent sales lookup failed", error);
+    return { ok: false, message: "Recent sales could not be loaded. You can still search by sale number." };
+  }
+
+  return {
+    ok: true,
+    sales: ((data ?? []) as RecentSaleRow[]).map((row) => ({
+      saleNumber: String(row.sale_number),
+      soldAt: row.sold_at,
+      cashierName: row.cashier_name,
+      itemCount: Number(row.item_count),
+      totalAmount: Number(row.total_amount),
+      returnableQuantity: Number(row.returnable_quantity),
+      hasPendingReturn: row.has_pending_return,
+    })),
+  };
 }
 
 const returnRequestSchema = z.object({

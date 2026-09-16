@@ -25,6 +25,18 @@ describe("role permissions", () => {
     expect(hasPermission("cashier", "sales:verify")).toBe(false);
   });
 
+  it("limits product management to administrators and managers", () => {
+    expect(hasPermission("administrator", "products:manage")).toBe(true);
+    expect(hasPermission("manager", "products:manage")).toBe(true);
+    expect(hasPermission("inventory_staff", "products:manage")).toBe(false);
+    expect(hasPermission("cashier", "products:manage")).toBe(false);
+  });
+
+  it("allows inventory staff to receive stock without managing products", () => {
+    expect(hasPermission("inventory_staff", "stock:receive")).toBe(true);
+    expect(hasPermission("cashier", "stock:receive")).toBe(false);
+  });
+
   it("formats the inventory staff role for display", () => {
     expect(formatRole("inventory_staff")).toBe("Inventory Staff");
   });

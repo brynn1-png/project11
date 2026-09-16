@@ -2,7 +2,7 @@
 
 ## Current State Summary (Updated: 2026-09-16)
 - **Open items:** 6
-- **Highest priority:** Apply and verify the Task #007 sales-workflow migrations
+- **Highest priority:** Apply and live-test the Task #008 product-registration and receiving migration; physical device tests remain pending hardware
 - **Purpose:** Track work that cannot be completed until required hardware, credentials, assets, decisions, or external access become available
 
 ---
@@ -46,15 +46,17 @@
 ---
 
 ## PND-004 — Production Database and Authentication Credentials
-**Status:** Partially complete — development foundation verified; sales-workflow migrations pending
+**Status:** Partially complete — Task #008 migration pending; production deployment pending
 **Added:** 2026-09-15
-**Reason:** The hosted Supabase project, administrator sign-in, inventory read models, and development seed are verified. This checkout is not linked to the hosted project and Docker remains unavailable, so Task #007 migrations still require manual dashboard application.
-**Prerequisites:** After Task #007 repository verification, apply `supabase/migrations/20260915000300_sales_workflow.sql` and `supabase/migrations/20260915000400_sales_verification_and_returns.sql` to the development project in that order.
+**Reason:** The hosted development project has all migrations through `20260916000300_recent_sales_picker.sql`, seed data, authentication, and verified Task #007 workflows. The new `20260916000400_product_registration_and_receiving.sql` migration must be applied and live-tested. This checkout is not linked to Supabase and Docker remains unavailable, so local database reset testing and the future production deployment remain external work.
+**Prerequisites:** For production, create a separate Supabase project and apply all reviewed migrations without the development seed.
 **Acceptance criteria:**
 - Development and production environments are separate.
 - Credentials are stored outside source control.
 - Task #006 migration and development seed apply successfully. (Completed 2026-09-16)
-- Task #007 sales migrations apply successfully to development.
+- Task #007 sales migrations apply successfully to development. (Completed 2026-09-16)
+- Task #007 corrective and recent-sales migrations apply successfully to development. (Completed 2026-09-16)
+- Task #008 product-registration and stock-receiving migration applies successfully to development. (Pending)
 - Database connectivity and authentication are verified in each deployed environment.
 
 ---

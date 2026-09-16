@@ -45,6 +45,20 @@ on conflict (id) do update set
   expiry_tracking = excluded.expiry_tracking,
   archived_at = null;
 
+update public.product_barcodes barcode_alias
+set is_active = false, retired_at = now()
+from public.products product
+where barcode_alias.product_id = product.id
+  and barcode_alias.is_active
+  and lower(barcode_alias.barcode) <> lower(product.barcode)
+  and product.id::text like '20000000-0000-4000-8000-%';
+
+insert into public.product_barcodes (product_id, barcode, is_active)
+select product.id, product.barcode, true
+from public.products product
+where product.id::text like '20000000-0000-4000-8000-%'
+on conflict do nothing;
+
 insert into public.product_costs (product_id, latest_purchase_price, average_cost)
 values
   ('20000000-0000-4000-8000-000000000001', 12.25, 12.25),
@@ -65,16 +79,16 @@ insert into public.inventory_batches (
   id, product_id, batch_number, quantity_received, quantity_remaining, unit_cost, expires_at, received_at
 )
 values
-  ('30000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', 'SEED-NDL-01', 84, 84, 12.25, current_date + 180, now() - interval '2 days'),
-  ('30000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000002', 'SEED-CAN-01', 42, 42, 38.50, current_date + 360, now() - interval '2 days'),
-  ('30000000-0000-4000-8000-000000000003', '20000000-0000-4000-8000-000000000003', 'SEED-MILK-01', 10, 10, 105.00, current_date + 90, now() - interval '3 days'),
-  ('30000000-0000-4000-8000-000000000004', '20000000-0000-4000-8000-000000000004', 'SEED-SUGAR-01', 36, 36, 64.00, current_date + 150, now() - interval '2 days'),
+  ('30000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', 'SEED-NDL-01', 84, 84, 12.25, (now() at time zone 'Asia/Manila')::date + 180, now() - interval '2 days'),
+  ('30000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000002', 'SEED-CAN-01', 42, 42, 38.50, (now() at time zone 'Asia/Manila')::date + 360, now() - interval '2 days'),
+  ('30000000-0000-4000-8000-000000000003', '20000000-0000-4000-8000-000000000003', 'SEED-MILK-01', 10, 10, 105.00, (now() at time zone 'Asia/Manila')::date + 90, now() - interval '3 days'),
+  ('30000000-0000-4000-8000-000000000004', '20000000-0000-4000-8000-000000000004', 'SEED-SUGAR-01', 36, 36, 64.00, (now() at time zone 'Asia/Manila')::date + 150, now() - interval '2 days'),
   ('30000000-0000-4000-8000-000000000005', '20000000-0000-4000-8000-000000000005', 'SEED-HOUSE-01', 31, 31, 48.00, null, now() - interval '4 days'),
-  ('30000000-0000-4000-8000-000000000006', '20000000-0000-4000-8000-000000000006', 'SEED-COND-01', 12, 12, 34.00, current_date + 240, now() - interval '3 days'),
-  ('30000000-0000-4000-8000-000000000007', '20000000-0000-4000-8000-000000000007', 'SEED-RICE-01', 128, 128, 49.50, current_date + 120, now() - interval '2 days'),
-  ('30000000-0000-4000-8000-000000000008', '20000000-0000-4000-8000-000000000008', 'SEED-SNACK-01', 18, 18, 30.25, current_date + 75, now() - interval '3 days'),
-  ('30000000-0000-4000-8000-000000000009', '20000000-0000-4000-8000-000000000009', 'SEED-EVAP-01', 9, 9, 31.00, current_date + 25, now() - interval '1 day'),
-  ('30000000-0000-4000-8000-000000000010', '20000000-0000-4000-8000-000000000010', 'SEED-SODA-01', 27, 27, 61.50, current_date + 120, now() - interval '1 day')
+  ('30000000-0000-4000-8000-000000000006', '20000000-0000-4000-8000-000000000006', 'SEED-COND-01', 12, 12, 34.00, (now() at time zone 'Asia/Manila')::date + 240, now() - interval '3 days'),
+  ('30000000-0000-4000-8000-000000000007', '20000000-0000-4000-8000-000000000007', 'SEED-RICE-01', 128, 128, 49.50, (now() at time zone 'Asia/Manila')::date + 120, now() - interval '2 days'),
+  ('30000000-0000-4000-8000-000000000008', '20000000-0000-4000-8000-000000000008', 'SEED-SNACK-01', 18, 18, 30.25, (now() at time zone 'Asia/Manila')::date + 75, now() - interval '3 days'),
+  ('30000000-0000-4000-8000-000000000009', '20000000-0000-4000-8000-000000000009', 'SEED-EVAP-01', 9, 9, 31.00, (now() at time zone 'Asia/Manila')::date + 25, now() - interval '1 day'),
+  ('30000000-0000-4000-8000-000000000010', '20000000-0000-4000-8000-000000000010', 'SEED-SODA-01', 27, 27, 61.50, (now() at time zone 'Asia/Manila')::date + 120, now() - interval '1 day')
 on conflict (product_id, batch_number) where batch_number is not null do update set
   quantity_received = excluded.quantity_received,
   quantity_remaining = excluded.quantity_remaining,

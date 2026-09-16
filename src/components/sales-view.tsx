@@ -32,6 +32,7 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [notes, setNotes] = useState("");
   const [message, setMessage] = useState("");
+  const [lastSale, setLastSale] = useState<{ number: string; total: number } | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [online, setOnline] = useState(true);
   const [saleKey, setSaleKey] = useState(() => crypto.randomUUID());
@@ -92,6 +93,7 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
     if (!online || dataSource !== "live") return setMessage("Refresh live inventory before confirming this sale.");
     if (cart.length === 0) return setMessage("Add at least one product before confirming the sale.");
     setMessage("");
+    setLastSale(null);
     startTransition(async () => {
       const result = await recordSale({
         idempotencyKey: saleKey,
@@ -99,6 +101,7 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
         notes,
       });
       if (!result.ok) return setMessage(result.message);
+      setLastSale({ number: result.saleNumber, total: result.totalAmount });
       setCart([]);
       setNotes("");
       setSaleKey(crypto.randomUUID());
@@ -137,6 +140,8 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
             {cameraOpen && <div className="rounded-2xl border border-[var(--border)] p-4"><CameraScanner onDetected={selectByBarcode} /></div>}
 
             {message && <Alert variant="destructive"><WarningCircle /><AlertTitle>Sale needs attention</AlertTitle><AlertDescription>{message}</AlertDescription></Alert>}
+
+            {lastSale && <Alert><CheckCircle /><AlertTitle>Sale #{lastSale.number} confirmed</AlertTitle><AlertDescription>{peso(lastSale.total)} was recorded. Use sale number {lastSale.number} if any item is returned.</AlertDescription></Alert>}
 
             {selected ? (
               <div className="rounded-2xl bg-[var(--muted)] p-5">

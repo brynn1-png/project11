@@ -9,8 +9,13 @@ type CatalogRow = {
   product_code: string;
   barcode: string;
   name: string;
+  description: string | null;
+  category_id: string;
   category: string;
+  package_size: number | string;
+  package_unit: string;
   stock_unit: string;
+  expiry_tracking: "required" | "not_applicable";
   selling_price: number | string;
   minimum_stock: number;
   quantity_on_hand: number | string;
@@ -71,9 +76,14 @@ export async function getInventorySnapshot(role: AppRole): Promise<InventorySnap
     id: row.product_code,
     databaseId: row.id,
     name: row.name,
+    description: row.description ?? undefined,
     barcode: row.barcode,
+    categoryId: row.category_id,
     category: row.category,
+    packageSize: Number(row.package_size),
+    packageUnit: row.package_unit,
     unit: row.stock_unit,
+    expiryTracking: row.expiry_tracking,
     stock: Number(row.quantity_on_hand),
     minimumStock: row.minimum_stock,
     price: Number(row.selling_price),

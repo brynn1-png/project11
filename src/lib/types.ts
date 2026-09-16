@@ -4,9 +4,14 @@ export type Product = {
   id: string;
   databaseId: string;
   name: string;
+  description?: string;
   barcode: string;
+  categoryId: string;
   category: string;
+  packageSize: number;
+  packageUnit: string;
   unit: string;
+  expiryTracking: "required" | "not_applicable";
   stock: number;
   minimumStock: number;
   price: number;

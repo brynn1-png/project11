@@ -27,7 +27,7 @@ const ROLE_PERMISSIONS: Record<AppRole, ReadonlySet<Permission>> = {
     "reports:view_costs",
   ]),
   inventory_staff: new Set([
-    "dashboard:view", "products:view", "products:manage", "stock:receive",
+    "dashboard:view", "products:view", "stock:receive",
     "sales:record", "transactions:view_all",
   ]),
   cashier: new Set(["dashboard:view", "products:view", "sales:record"]),

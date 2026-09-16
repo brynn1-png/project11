@@ -1,11 +1,48 @@
 # Progress Log
 
 ## Current State Summary (Updated: 2026-09-16)
-- **Active Task:** Task #007 - Receipt-based sales, returns, verification, and catalog caching
+- **Active Task:** #008 - Product registration, printable barcodes, and stock receiving
 - **Status:** 🟡 In Progress
-- **Next Action:** Complete Task #007 verification and apply its sales-workflow migrations to the hosted development project
-- **Blockers:** Hosted migrations require manual dashboard application because the local Supabase CLI is not linked and no controllable signed-in browser is available
-- **Last Completed:** Task #006 on 2026-09-16
+- **Next Action:** Apply `20260916000400_product_registration_and_receiving.sql` to the hosted development database, then run live product and receiving acceptance tests
+- **Blockers:** Hosted migration requires manual Supabase SQL Editor access; physical scanner/device testing remains pending hardware
+- **Last Completed:** Task #007 on 2026-09-16
+
+---
+
+## 2026-09-16 — Task #008: Product Registration and Stock Receiving
+**Status:** 🟡 In Progress
+**Summary:** Implemented protected product/category management, generated printable barcodes, and atomic one-batch stock receiving; hosted migration and live acceptance remain.
+**Steps completed:**
+- [x] Added automatic `PRD-######` product codes and `INV-######` internal barcodes
+- [x] Added permanent barcode alias history so retired codes cannot be reused
+- [x] Added manager/administrator product and category write functions with audit records
+- [x] Added product registration, editing, category management, archiving, and Code 128 label printing
+- [x] Added a role-aware Stock In shortcut that opens the new-product form directly
+- [x] Added atomic receiving with generated receipt/batch references, expiry validation, and weighted-average costing
+- [x] Limited product management to managers/administrators while preserving receiving for inventory staff
+- [x] Passed unit tests, ESLint, TypeScript, production build, diff validation, and interface detector
+- [ ] Apply the migration to the hosted development project
+- [ ] Live-test product creation, barcode printing, stock receiving, and weighted-average cost
+**Notes:** Corrections and adjustment approval remain a later phase. New products start at zero stock and can proceed directly to an opening-stock receipt after registration.
+
+---
+
+## 2026-09-16 — Task #007: Receipt-Based Sales, Returns, and Verification
+**Status:** 🟢 Done
+**Summary:** Replaced the separate scanner and stock-out workflow with atomic receipt-based sales, reviewed returns, business-day verification, protected recent-sale selection, and a non-authoritative browser catalog cache.
+**Steps completed:**
+- [x] Combined scanning, quantity entry, cart building, and stock-out into the Sales workspace
+- [x] Added atomic FEFO sale recording with cost snapshots, idempotency, concurrency checks, and expired-stock rejection
+- [x] Added return requests linked to original sales and manager/administrator approval
+- [x] Restored only approved resellable returns to their original non-expired inventory batches
+- [x] Added open, pending-review, and verified business-day states
+- [x] Added role-aware recent-sales selection and retained exact sale-number lookup
+- [x] Kept the latest confirmed sale number visible on the Sales page
+- [x] Added IndexedDB caching for lookup performance and transient recovery while keeping Supabase authoritative
+- [x] Corrected Philippine business-date handling and sale-total initialization
+- [x] Applied and verified all Task #007 migrations on the hosted development project
+- [x] Passed automated checks and live sale, return, recent-sale picker, and day-verification acceptance tests
+**Notes:** Full offline application startup was explicitly excluded. Sales always require a live connection. Live acceptance recorded two sales, six sold units, one approved return, ₱99.00 gross sales, and a verified business day.
 
 ---
 

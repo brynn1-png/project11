@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-Next.js with React, TypeScript, Tailwind CSS, shadcn/ui-style components, Supabase PostgreSQL, and Supabase Auth. Authentication and inventory reads are server-backed; atomic product, receiving, and sales write workflows are the next implementation phase.
+Next.js with React, TypeScript, Tailwind CSS, shadcn/ui-style components, Supabase PostgreSQL, and Supabase Auth. Authentication, inventory reads, product registration, stock receiving, receipt-based sales, returns, and day verification are server-backed.
 
 ## Users
 
@@ -30,10 +30,17 @@ The system is used on desktop and laptop computers with built-in or external web
 
 - Working name: Inventory System.
 - Uses secure email-and-password authentication with administrator, manager, inventory staff, and cashier roles.
-- Supports dashboard, products, inventory, barcode scanning and generation, stock-in, customer purchases, transaction history, reports, and user management.
+- Supports dashboard, products, inventory, stock-in, receipt-based sales, returns, sales verification, transaction history, reports, and user management.
 - Camera scanning supports compatible cameras exposed by the browser and lets users choose among available devices.
 - Manual barcode entry remains available when camera scanning is unavailable or unreliable.
-- Products, on-hand quantities, inventory activity, and administrator-visible user profiles are loaded from PostgreSQL. Product creation, receiving, and customer-purchase writes remain disabled until their atomic database workflows are implemented.
+- Products, on-hand quantities, inventory activity, and administrator-visible user profiles are loaded from PostgreSQL.
+- The Sales workspace combines product scanning and stock-out recording. A cashier can scan once, enter a whole-unit quantity, build a multi-product sale, and confirm it as one atomic database transaction.
+- Completed sales deduct non-expired inventory using FEFO batch allocation and idempotency protection. A sale is never confirmed from cached-only or offline data.
+- Returns remain linked to their original sale, wait for administrator or manager review, and restore inventory only when approved as resellable. Recent sales are selectable by authorized staff, while exact sale-number lookup remains available for older receipts. Damaged, expired, and rejected returns do not increase available stock.
+- Business days move from open to pending review to verified. Pending returns block verification only for their associated business day.
+- The latest product catalog and activity are cached in IndexedDB to speed repeated lookup and tolerate transient data-loading failures while the application remains open. Supabase remains the source of truth, sale confirmation requires a live connection, and full offline application startup is not required.
+- Administrators and managers can register and edit products and categories, assign manufacturer barcodes or generated `INV-######` Code 128 labels, and archive products. Administrators, managers, and inventory staff can receive one supplier batch atomically with purchase cost and expiry validation.
+- Product creation and stock receiving require a live database with the latest migration applied.
 - The system does not include supplier management, delivery tracking, multi-location management, advanced warehouse management, full accounting, or payment processing.
 - Camera access requires user permission and a secure browser context such as localhost or HTTPS.
 

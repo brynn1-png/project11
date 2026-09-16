@@ -132,4 +132,23 @@ button { -webkit-tap-highlight-color: transparent; }
   .no-print { display: none !important; }
   body { background: white; }
   .panel { border-color: #d5d5d5; break-inside: avoid; }
+
+  .barcode-print-sheet { display: grid !important; position: absolute; inset: 0; z-index: 9999; background: white; color: #111; }
+  body:has(.barcode-print-sheet) * { visibility: hidden; }
+  body:has(.barcode-print-sheet) .barcode-print-sheet,
+  body:has(.barcode-print-sheet) .barcode-print-sheet * { visibility: visible; }
+  .barcode-print-sheet.barcode-print-sheet { gap: 3mm; }
+  .barcode-print-sheet.barcode-layout-single { grid-template-columns: 60mm; align-content: start; }
+  .barcode-print-sheet.barcode-layout-sheet { grid-template-columns: repeat(3, 1fr); align-content: start; }
+  .barcode-print-label { display: grid; min-height: 32mm; break-inside: avoid; place-items: center; border: 0.2mm dashed #bbb; padding: 2mm; text-align: center; }
+  .barcode-print-label p { margin: 0; max-width: 54mm; overflow: hidden; font-size: 9pt; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+  .barcode-print-label small { margin-top: 1mm; color: #444; font-size: 7pt; }
+  .barcode-print-label svg { display: block; max-width: 100%; height: 20mm; }
 }
+
+.barcode-print-sheet { display: none; }
+
+@page barcode-single { size: 60mm 35mm; margin: 1.5mm; }
+@page barcode-sheet { size: A4; margin: 10mm; }
+html[data-barcode-print="single"] .barcode-print-sheet { page: barcode-single; }
+html[data-barcode-print="sheet"] .barcode-print-sheet { page: barcode-sheet; }

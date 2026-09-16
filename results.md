@@ -1,10 +1,63 @@
 # Results Log
 
 ## Current State Summary (Updated: 2026-09-16)
-- **Active Task:** Task #007 - Receipt-based sales, returns, verification, and catalog caching
-- **Status:** 🟡 In Progress
-- **Latest Result:** Task #006 is complete: the hosted development project has protected inventory read models and the repeatable seed data, and the signed-in dashboard shows 10 products with 397 units
-- **Verification:** 14 tests, ESLint, TypeScript, production build, hosted RPC presence/security, and signed-in seed totals passed
+- **Active Task:** Task #008 — hosted migration and live acceptance pending
+- **Status:** 🟡 Partial
+- **Latest Result:** Product/category management, printable Code 128 labels, and atomic stock receiving compile and pass local automated verification
+- **Verification:** 21 tests, ESLint, TypeScript, production build, diff validation, and interface detector passed; hosted database verification remains
+
+---
+
+## 2026-09-16 — Task #008: Product Registration and Receiving Result
+**Outcome:** The approved workflow is implemented locally. Managers can register and edit catalog records, generate and print internal barcodes, and proceed to opening stock; authorized receiving staff can record one validated batch at a time.
+**Database result:**
+- Added product-code, internal-barcode, and receiving-number sequences
+- Added permanent active/inactive product barcode aliases
+- Added protected category/product create and update functions plus product archiving
+- Added atomic stock receiving with expiry checks, generated batch references, audit logs, and weighted-average cost updates
+- Removed direct authenticated writes to catalog, batch, and cost tables
+**Interface result:**
+- Replaced the disabled Products placeholder with product and category management
+- Added individual and A4 Code 128 barcode label printing
+- Replaced the disabled Stock In placeholder with product lookup and a complete receiving form
+- Added a Stock In shortcut that takes authorized users directly into new-product registration
+- Added manager-only margin warnings without automatically changing selling price
+**Verification results:**
+- `npm run test`: 21 tests passed across 5 files
+- `npm run lint`: passed
+- `npx tsc --noEmit`: passed
+- `npm run build`: passed
+- Impeccable interface detector: no findings
+- `git diff --check`: passed apart from expected Windows line-ending warnings
+**Pending:** Apply `20260916000400_product_registration_and_receiving.sql` to the hosted development database, then verify live product creation, label output, receiving quantities, expiry behavior, and weighted-average cost.
+
+---
+
+## 2026-09-16 — Task #007: Sales Workflow Result
+**Outcome:** Staff can scan products, enter whole-unit quantities, confirm one atomic receipt, locate recent sales for returns, submit returned items for review, and verify completed business days.
+**Database result:**
+- Added business days, sale idempotency, returns, return items, and return-to-batch allocations
+- Added atomic FEFO sale recording and protected sales/return/verification read and write functions
+- Added concurrency controls for stock deduction and returned-quantity validation
+- Corrected business dates to `Asia/Manila` and fixed the new-sale total initialization defect found during live testing
+- Added a role-aware recent-sales function capped at 50 records
+**Interface result:**
+- Replaced separate Scanner and Stock Out destinations with Sales
+- Added scan-once quantity entry, a multi-product cart, totals, online-only confirmation, and persistent sale-number confirmation
+- Added recent-sale search and selection plus manual number lookup on Returns
+- Added return condition capture and manager/administrator review
+- Added responsive business-day summaries and verification controls
+- Added IndexedDB catalog/activity caching without making it authoritative
+**Verification results:**
+- `npm run test`: 14 tests passed across 4 files
+- `npm run lint`: passed
+- `npx tsc --noEmit`: passed
+- `npm run build`: passed with `/`, `/login`, and Proxy compiled
+- Impeccable interface detector: no findings
+- `git diff --check`: passed apart from expected Windows line-ending warnings
+- Hosted anonymous calls to protected Task #007 functions returned PostgreSQL `42501`, confirming authenticated-only execution
+- Live acceptance: sales #9 and #10 recorded 6 units and ₱99.00 gross; a resellable return was approved and restored one unit; the recent-sales picker displayed both receipts; the business day was submitted and verified
+**Scope note:** Full offline application loading was not implemented or required. A live connection remains mandatory for sale confirmation.
 
 ---
 

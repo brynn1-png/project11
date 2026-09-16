@@ -1,10 +1,41 @@
 # Decision Log
 
 ## Current State Summary (Updated: 2026-09-16)
-- **Active Decision:** Receipt-based sales and verification workflow
-- **Status:** 🟢 Confirmed
-- **Latest Decision:** Task #006 remains based on protected inventory read functions and repeatable development-only seed data; its hosted development deployment is verified
-- **Open Questions:** Task #007 hosted migration verification, hosting, final branding, and physical scanner testing
+- **Active Decision:** Product registration and stock receiving workflow
+- **Status:** 🟡 Implemented locally; hosted verification pending
+- **Latest Decision:** New products start at zero stock, internal barcodes use printable Code 128 `INV-######` values, and each received supplier batch is committed atomically with weighted-average costing
+- **Open Questions:** Hosted Task #008 acceptance, future adjustment approval, hosting, final branding, and physical scanner testing
+
+---
+
+## 2026-09-16 — Task #008: Product Registration and Receiving
+**Decision:** Keep product identity separate from inventory movement: managers register a zero-stock product first, then authorized staff receive each supplier batch through one atomic database function.
+**Why:** Product metadata and stock receipts have different audit, validation, expiry, and cost requirements. Separating them prevents a partially created product from also creating an incomplete batch.
+**Additional decisions:**
+- Product codes are generated as `PRD-######`; products without manufacturer barcodes receive `INV-######` Code 128 labels.
+- Changing a barcode retires the previous value as a permanent inactive alias; it can never be assigned to another product.
+- Administrators and managers can manage products and categories. Inventory staff can receive stock but cannot change catalog identity; cashiers cannot perform either write.
+- Stock In provides administrators and managers a direct “Register new product” shortcut that opens the registration form, while inventory staff continue to see only receiving controls.
+- Each receiving transaction represents one product batch. Quantity and purchase price are mandatory; expiry is mandatory only for tracked products; supplier batch, manufacture date, invoice reference, and notes are optional.
+- A missing supplier batch number is replaced with `RCV-YYYYMMDD-####`. Receiving recalculates weighted-average cost but never changes selling price; managers see low- or negative-margin warnings.
+- Stock corrections and approval remain a separate next phase.
+**Alternatives rejected:** Direct table writes were rejected in favor of audited security-definer functions. Reusing retired barcodes was rejected because it could make old labels identify the wrong product.
+
+---
+
+## 2026-09-16 — Task #007: Sales, Returns, and Day Verification
+**Decision:** Use one Sales workspace for scanning and stock-out, commit each completed customer sale atomically, and treat Supabase as the inventory source of truth.
+**Why:** A receipt-level transaction prevents partial stock deductions, supports multiple products and quantities, preserves cost snapshots, and is safer under multiple counters than accumulating unapproved sales only in browser JSON.
+**Additional decisions:**
+- Repeated scanning and direct quantity entry both update a single cart.
+- Inventory is allocated FEFO from non-expired batches inside the database transaction.
+- Idempotency keys prevent accidental duplicate receipt submission.
+- Returns are append-only records linked to the original sale; only manager- or administrator-approved resellable items restore stock.
+- Business days move from open to pending review to verified, and their operational date uses `Asia/Manila`.
+- Administrators and managers can select from all recent sales; other sales-capable roles see only their own recent sales. Exact number lookup remains available for older receipts.
+- IndexedDB caches catalog and activity data only for lookup speed and transient recovery. Sales cannot be confirmed from cached-only data.
+- Full offline/PWA startup is not required.
+**Alternatives rejected:** A standalone scanner plus separate stock-out page was redundant. Holding the day’s authoritative sales only in browser JSON was rejected because it risks data loss, stale stock, and multi-counter overselling.
 
 ---
 

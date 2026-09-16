@@ -4,19 +4,20 @@ import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   ArrowCounterClockwise, ArrowDown, ArrowUp, Barcode, Bell, CaretRight, ChartBar,
-  Check, CirclesFour, ClockCounterClockwise, DownloadSimple, List, MagnifyingGlass,
-  Package, Plus, Printer, Scan, ShoppingCart, SignOut, Storefront, Users, Warning, X,
+  Check, CirclesFour, ClockCounterClockwise, DownloadSimple, List,
+  Package, Printer, Scan, ShoppingCart, SignOut, Storefront, Users, Warning, X,
 } from "@phosphor-icons/react";
 import { logout } from "@/app/login/actions";
 import { useInventory } from "@/components/inventory-provider";
 import { SalesView } from "@/components/sales-view";
 import { ReturnsView } from "@/components/returns-view";
 import { SalesVerificationView } from "@/components/sales-verification-view";
+import { ProductManagementView } from "@/components/product-management-view";
+import { StockInView } from "@/components/stock-in-view";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { cn } from "@/lib/utils";
-import { getStockStatus, type Product, type StockTransaction, type UserProfile } from "@/lib/types";
+import { getStockStatus, type StockTransaction, type UserProfile } from "@/lib/types";
 import { formatRole, hasPermission, type Permission } from "@/lib/auth/permissions";
 import type { CurrentUser } from "@/lib/auth/current-user";
 
@@ -68,6 +69,8 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
   const [view, setView] = useState<View>("dashboard");
   const [mobileNav, setMobileNav] = useState(false);
   const [toast, setToast] = useState("");
+  const [receivingProductId, setReceivingProductId] = useState<string | null>(null);
+  const [startProductRegistration, setStartProductRegistration] = useState(false);
   const reduceMotion = useReducedMotion();
   const { dataSource, lastSyncedAt } = useInventory();
 
@@ -76,11 +79,17 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
     window.setTimeout(() => setToast(""), 3200);
   }
 
+  function navigate(next: View) {
+    if (next === "stock-in") setReceivingProductId(null);
+    if (next === "products") setStartProductRegistration(false);
+    setView(next);
+  }
+
   const meta = VIEW_META[view];
   const pageTitle = view === "dashboard" ? `Good morning, ${currentUser.fullName.split(" ")[0]}` : meta.title;
   return (
     <div className="min-h-[100dvh] bg-[var(--background)]">
-      <Sidebar currentUser={currentUser} view={view} open={mobileNav} onClose={() => setMobileNav(false)} onNavigate={(next) => { setView(next); setMobileNav(false); }} />
+      <Sidebar currentUser={currentUser} view={view} open={mobileNav} onClose={() => setMobileNav(false)} onNavigate={(next) => { navigate(next); setMobileNav(false); }} />
 
       <div className="lg:pl-[264px]">
         <header className="no-print sticky top-0 z-20 flex h-16 items-center justify-between border-b border-[var(--border)] bg-[color:rgba(244,247,246,.92)] px-4 backdrop-blur-md sm:px-6 lg:px-8">
@@ -101,11 +110,11 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
           {dataError && <div role="alert" className={cn("mb-6 rounded-2xl border p-4 text-sm font-medium", dataSource === "cached" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-red-200 bg-red-50 text-red-800")}>{dataSource === "cached" ? "Live inventory is unavailable. You can search the last synchronized catalog, but sales cannot be confirmed until the connection returns." : dataError}</div>}
 
           <div key={view} className="view-enter">
-            {view === "dashboard" && <Dashboard onNavigate={setView} />}
-            {view === "products" && <ProductsView canManage={hasPermission(currentUser.role, "products:manage")} />}
+            {view === "dashboard" && <Dashboard canReceive={hasPermission(currentUser.role, "stock:receive")} onNavigate={navigate} />}
+            {view === "products" && <ProductManagementView startCreating={startProductRegistration} canManage={hasPermission(currentUser.role, "products:manage")} canArchive={hasPermission(currentUser.role, "products:archive")} canReceive={hasPermission(currentUser.role, "stock:receive")} notify={notify} onReceive={(productId) => { setReceivingProductId(productId); setView("stock-in"); }} />}
             {view === "sales" && <SalesView notify={notify} />}
             {view === "returns" && <ReturnsView notify={notify} />}
-            {view === "stock-in" && <StockMovementView type="Stock In" />}
+            {view === "stock-in" && <StockInView initialProductId={receivingProductId} canRegisterProduct={hasPermission(currentUser.role, "products:manage")} showMargin={hasPermission(currentUser.role, "reports:view_costs")} notify={notify} onRegisterProduct={() => { setStartProductRegistration(true); setView("products"); }} />}
             {view === "inventory" && <InventoryView />}
             {view === "transactions" && <TransactionsView />}
             {view === "sales-review" && <SalesVerificationView notify={notify} />}
@@ -148,7 +157,7 @@ function Sidebar({ currentUser, view, open, onClose, onNavigate }: { currentUser
   </>;
 }
 
-function Dashboard({ onNavigate }: { onNavigate: (view: View) => void }) {
+function Dashboard({ canReceive, onNavigate }: { canReceive: boolean; onNavigate: (view: View) => void }) {
   const { products, transactions } = useInventory();
   const low = products.filter((p) => getStockStatus(p) === "Low Stock");
   const out = products.filter((p) => p.stock === 0);
@@ -166,32 +175,13 @@ function Dashboard({ onNavigate }: { onNavigate: (view: View) => void }) {
     </section>
     <section className="grid gap-5 xl:grid-cols-[1.35fr_.65fr]">
       <div className="panel overflow-hidden"><div className="flex items-center justify-between p-5"><div><h2 className="font-bold">Recent activity</h2><p className="mt-1 text-xs text-[var(--muted-foreground)]">Latest recorded inventory movement</p></div><Button variant="ghost" size="sm" onClick={() => onNavigate("transactions")}>View all<CaretRight size={14} /></Button></div>{transactions.length > 0 ? <div className="overflow-x-auto"><TransactionTable transactions={transactions.slice(0, 6)} compact /></div> : <EmptyState title="No inventory activity yet" text="Received stock and completed sales will appear here." />}</div>
-      <div className="panel p-5"><div className="flex items-center justify-between"><div><h2 className="font-bold">Needs attention</h2><p className="mt-1 text-xs text-[var(--muted-foreground)]">At or below minimum level</p></div><span className="grid size-9 place-items-center rounded-xl bg-amber-50 text-amber-700"><Warning size={19} weight="fill" /></span></div><div className="mt-5 flex flex-col gap-1">{[...out, ...low].slice(0, 5).map((product) => <button key={product.id} onClick={() => onNavigate("stock-in")} className="flex min-h-14 w-full items-center justify-between rounded-xl px-2 text-left hover:bg-[var(--muted)]"><div className="min-w-0"><p className="truncate text-sm font-semibold">{product.name}</p><p className="text-xs text-[var(--muted-foreground)]">Minimum {product.minimumStock} {product.unit}s</p></div><div className="ml-3 text-right"><p className={cn("font-bold", product.stock === 0 ? "text-red-600" : "text-amber-700")}>{product.stock}</p><p className="text-[11px] text-[var(--muted-foreground)]">on hand</p></div></button>)}{low.length + out.length === 0 && <p className="py-8 text-center text-sm text-[var(--muted-foreground)]">All products are above their minimum stock level.</p>}</div><Button className="mt-5 w-full" disabled title="Stock receiving will be enabled with the atomic database workflow."><ArrowDown size={17} />Record stock in</Button></div>
+      <div className="panel p-5"><div className="flex items-center justify-between"><div><h2 className="font-bold">Needs attention</h2><p className="mt-1 text-xs text-[var(--muted-foreground)]">At or below minimum level</p></div><span className="grid size-9 place-items-center rounded-xl bg-amber-50 text-amber-700"><Warning size={19} weight="fill" /></span></div><div className="mt-5 flex flex-col gap-1">{[...out, ...low].slice(0, 5).map((product) => <button key={product.id} disabled={!canReceive} onClick={() => onNavigate("stock-in")} className="flex min-h-14 w-full items-center justify-between rounded-xl px-2 text-left hover:bg-[var(--muted)] disabled:cursor-default"><div className="min-w-0"><p className="truncate text-sm font-semibold">{product.name}</p><p className="text-xs text-[var(--muted-foreground)]">Minimum {product.minimumStock} {product.unit}s</p></div><div className="ml-3 text-right"><p className={cn("font-bold", product.stock === 0 ? "text-red-600" : "text-amber-700")}>{product.stock}</p><p className="text-[11px] text-[var(--muted-foreground)]">on hand</p></div></button>)}{low.length + out.length === 0 && <p className="py-8 text-center text-sm text-[var(--muted-foreground)]">All products are above their minimum stock level.</p>}</div>{canReceive && <Button className="mt-5 w-full" onClick={() => onNavigate("stock-in")}><ArrowDown size={17} />Record stock in</Button>}</div>
     </section>
     <section className="grid gap-5 lg:grid-cols-[.8fr_1.2fr]">
       <div className="rounded-2xl bg-[#163a2d] p-6 text-white"><div className="flex items-start justify-between"><div><h2 className="text-lg font-bold">Start a sale</h2><p className="mt-2 max-w-sm text-sm leading-6 text-white/65">Scan products, enter quantities, and confirm the complete customer sale in one workflow.</p></div><Scan size={28} className="text-emerald-300" /></div><Button className="mt-7 bg-emerald-300 text-[#15362a] hover:bg-emerald-200" onClick={() => onNavigate("sales")}>Open sales<CaretRight size={16} /></Button></div>
       <div className="panel p-5"><h2 className="font-bold">Inventory distribution</h2><p className="mt-1 text-xs text-[var(--muted-foreground)]">Products grouped by current status</p><div className="mt-7 flex h-3 overflow-hidden rounded-full bg-[var(--muted)]"><div className="bg-emerald-600" style={{ width: `${products.length === 0 ? 0 : products.filter((p) => getStockStatus(p) === "In Stock").length / products.length * 100}%` }} /><div className="bg-amber-400" style={{ width: `${products.length === 0 ? 0 : low.length / products.length * 100}%` }} /><div className="bg-red-500" style={{ width: `${products.length === 0 ? 0 : out.length / products.length * 100}%` }} /></div><div className="mt-5 grid grid-cols-3 gap-3 text-sm"><div><p className="font-bold">{products.length - low.length - out.length}</p><p className="text-xs text-[var(--muted-foreground)]">In stock</p></div><div><p className="font-bold">{low.length}</p><p className="text-xs text-[var(--muted-foreground)]">Low stock</p></div><div><p className="font-bold">{out.length}</p><p className="text-xs text-[var(--muted-foreground)]">Out of stock</p></div></div></div>
     </section>
   </div>;
-}
-
-function ProductsView({ canManage }: { canManage: boolean }) {
-  const { products } = useInventory();
-  const [search, setSearch] = useState(""); const [category, setCategory] = useState("All");
-  const categories = ["All", ...Array.from(new Set(products.map((p) => p.category)))];
-  const filtered = products.filter((p) => (category === "All" || p.category === category) && `${p.name} ${p.barcode}`.toLowerCase().includes(search.toLowerCase()));
-  return <div className="grid gap-4">
-    <div className="flex flex-col gap-3 sm:flex-row"><div className="relative flex-1"><MagnifyingGlass className="absolute left-3.5 top-3.5 text-[var(--muted-foreground)]" size={18} /><Input className="pl-10" placeholder="Search product or barcode" value={search} onChange={(e) => setSearch(e.target.value)} /></div><select className="select-field sm:w-52" value={category} onChange={(e) => setCategory(e.target.value)}>{categories.map((item) => <option key={item}>{item}</option>)}</select>{canManage && <Button disabled aria-describedby="product-write-status"><Plus size={17} />Add product</Button>}</div>
-    {canManage && <p id="product-write-status" className="text-xs text-[var(--muted-foreground)]">Product creation will be enabled with the atomic database write workflow.</p>}
-    <div className="panel overflow-hidden"><div className="overflow-x-auto"><table className="data-table min-w-[850px]"><thead><tr><th>Product</th><th>Barcode</th><th>Category</th><th>Price</th><th>Quantity</th><th>Status</th></tr></thead><tbody>{filtered.map((p) => <tr key={p.id}><td><p className="font-semibold">{p.name}</p><p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{p.id}</p></td><td className="font-mono text-xs">{p.barcode}</td><td>{p.category}</td><td>{peso(p.price)}</td><td><strong>{p.stock}</strong> <span className="text-xs text-[var(--muted-foreground)]">{p.unit}s</span></td><td><StatusBadge status={getStockStatus(p)} /></td></tr>)}</tbody></table></div>{filtered.length === 0 && <EmptyState title={products.length === 0 ? "No products yet" : "No matching products"} text={products.length === 0 ? "Run the development seed or add your first product when database writes are enabled." : "Try a different product name, barcode, or category."} />}</div>
-  </div>;
-}
-
-function StockMovementView({ type }: { type: "Stock In" | "Stock Out" }) {
-  const { products } = useInventory(); const [barcode, setBarcode] = useState(""); const [selected, setSelected] = useState<Product | null>(null); const [quantity, setQuantity] = useState(1); const [notes, setNotes] = useState(""); const [error, setError] = useState("");
-  function find() { const p = products.find((item) => item.barcode === barcode.trim()); setSelected(p || null); setError(p ? "" : "No product matches this barcode."); }
-  const inbound = type === "Stock In";
-  return <div className="grid gap-5 lg:grid-cols-[1fr_.78fr]"><div className="panel p-5 sm:p-7"><h2 className="font-bold">Find a product</h2><form className="mt-5 flex gap-2" onSubmit={(e) => { e.preventDefault(); find(); }}><div className="relative flex-1"><Barcode className="absolute left-3.5 top-3.5 text-[var(--muted-foreground)]" size={18} /><Input className="pl-10" value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder="Scan or enter barcode" aria-label="Product barcode" /></div><Button type="submit">Find</Button></form><div className="mt-3"><select className="select-field" value={selected?.id || ""} onChange={(e) => { const p = products.find((item) => item.id === e.target.value) || null; setSelected(p); setBarcode(p?.barcode || ""); setError(""); }}><option value="">Or choose a product</option>{products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>{selected ? <div className="mt-6 rounded-2xl bg-[var(--muted)] p-5"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-semibold text-[var(--muted-foreground)]">{selected.id}</p><h3 className="mt-1 font-bold">{selected.name}</h3><p className="mt-1 font-mono text-xs text-[var(--muted-foreground)]">{selected.barcode}</p></div><div className="sm:text-right"><p className="text-2xl font-bold">{selected.stock}</p><p className="text-xs text-[var(--muted-foreground)]">{selected.unit}s available</p></div></div></div> : <div className="mt-6 rounded-2xl border border-dashed border-[var(--border)] p-8 text-center text-sm text-[var(--muted-foreground)]">The selected product will appear here.</div>}{error && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-medium text-red-700">{error}</p>}</div><div className={cn("rounded-2xl p-5 sm:p-7", inbound ? "bg-[#153a2c] text-white" : "bg-[#3a2824] text-white")}><div className="flex items-center gap-3"><span className={cn("grid size-11 place-items-center rounded-xl", inbound ? "bg-emerald-300 text-[#153a2c]" : "bg-orange-200 text-[#3a2824]")}>{inbound ? <ArrowDown size={21} weight="bold" /> : <ArrowUp size={21} weight="bold" />}</span><div><h2 className="font-bold">Confirm {type.toLowerCase()}</h2><p className="text-sm text-white/55">Database writes are not enabled yet</p></div></div><div className="mt-7 grid gap-5"><div><label className="mb-2 block text-sm font-semibold" htmlFor="quantity">Quantity</label><Input id="quantity" className="border-white/20 bg-white/10 text-white placeholder:text-white/40" type="number" min="1" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} disabled /></div><div><label className="mb-2 block text-sm font-semibold" htmlFor="notes">Notes</label><textarea id="notes" className="min-h-24 w-full resize-none rounded-xl border border-white/20 bg-white/10 p-3 text-sm text-white/70 outline-none" placeholder={inbound ? "Example: Morning delivery" : "Example: Customer purchase"} value={notes} onChange={(e) => setNotes(e.target.value)} disabled /></div>{selected && <div className="flex items-center justify-between border-t border-white/15 pt-4 text-sm"><span className="text-white/60">Current quantity</span><strong className="text-lg">{selected.stock} {selected.unit}s</strong></div>}<Button className="w-full" disabled>Database workflow pending</Button></div></div></div>;
 }
 
 function InventoryView() {
