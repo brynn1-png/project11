@@ -1,10 +1,28 @@
 # Results Log
 
-## Current State Summary (Updated: 2026-09-16)
+## Current State Summary (Updated: 2026-09-17)
 - **Active Task:** Task #008 — hosted migration and live acceptance pending
 - **Status:** 🟡 Partial
-- **Latest Result:** Product/category management, printable Code 128 labels, and atomic stock receiving compile and pass local automated verification
+- **Latest Result:** Generated barcode selection now includes an accurate, clearly marked Code 128 preview; the real barcode remains assigned and printable only after saving
 - **Verification:** 21 tests, ESLint, TypeScript, production build, diff validation, and interface detector passed; hosted database verification remains
+
+---
+
+## 2026-09-17 — Task #008: Stock In Selector Fix Result
+**Outcome:** Existing product names and product codes display without overlapping an icon in the Stock In selector.
+**Verification results:** 21 tests, ESLint, TypeScript, production build, and the Impeccable interface detector passed.
+
+---
+
+## 2026-09-17 — Task #008: Generated Barcode Preview Result
+**Outcome:** Selecting “Generate INV code” now displays a live Code 128 sample using the current product name and `INV-######` placeholder.
+**Safety result:** The preview is labeled “Preview only,” has no print action, and explains that the operational code is assigned after registration.
+**Verification results:**
+- `npm run test`: 21 tests passed across 5 files
+- `npm run lint`: passed
+- `npx tsc --noEmit`: passed
+- `npm run build`: passed
+- Impeccable interface detector: no findings
 
 ---
 

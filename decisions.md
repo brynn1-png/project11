@@ -1,10 +1,23 @@
 # Decision Log
 
-## Current State Summary (Updated: 2026-09-16)
+## Current State Summary (Updated: 2026-09-17)
 - **Active Decision:** Product registration and stock receiving workflow
 - **Status:** 🟡 Implemented locally; hosted verification pending
-- **Latest Decision:** New products start at zero stock, internal barcodes use printable Code 128 `INV-######` values, and each received supplier batch is committed atomically with weighted-average costing
+- **Latest Decision:** Generated-barcode mode shows a clearly marked sample label before saving, while only the database-assigned barcode can be printed or used operationally
 - **Open Questions:** Hosted Task #008 acceptance, future adjustment approval, hosting, final branding, and physical scanner testing
+
+---
+
+## 2026-09-17 — Task #008: Stock In Selector Presentation
+**Decision:** Keep the barcode icon in the dedicated search input and remove the redundant icon from the native existing-product selector.
+**Why:** The shared selector padding overrode the icon-specific padding, causing product text to overlap the icon. The native selector is already understandable without decoration and now has an accessible label.
+
+---
+
+## 2026-09-17 — Task #008: Barcode Preview Behavior
+**Decision:** Show a Code 128 preview containing `INV-######` and the entered product name before registration, but do not reserve or expose a real inventory number until the product is saved.
+**Why:** Users can understand the physical label before committing the product without consuming sequence values for abandoned forms or mistaking an unsaved code for real inventory.
+**Alternatives rejected:** Pre-allocating the next database sequence number during form entry was rejected because cancelled forms would create misleading gaps and require reservation cleanup. Enabling print on the placeholder was rejected because it could produce unusable labels.
 
 ---
 

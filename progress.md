@@ -1,11 +1,36 @@
 # Progress Log
 
-## Current State Summary (Updated: 2026-09-16)
+## Current State Summary (Updated: 2026-09-17)
 - **Active Task:** #008 - Product registration, printable barcodes, and stock receiving
 - **Status:** 🟡 In Progress
 - **Next Action:** Apply `20260916000400_product_registration_and_receiving.sql` to the hosted development database, then run live product and receiving acceptance tests
 - **Blockers:** Hosted migration requires manual Supabase SQL Editor access; physical scanner/device testing remains pending hardware
 - **Last Completed:** Task #007 on 2026-09-16
+
+---
+
+## 2026-09-17 — Task #008: Stock In Selector Overlap Fix
+**Status:** 🟢 Done
+**Summary:** Removed the redundant icon that overlapped existing-product names in the Stock In selector.
+**Steps completed:**
+- [x] Restored the shared selector’s standard text padding
+- [x] Added an explicit accessible label to the product selector
+- [x] Preserved the icon in the separate barcode/product-code search field
+- [x] Passed 21 tests, ESLint, TypeScript, production build, and interface detector
+**Notes:** No database or workflow behavior changed.
+
+---
+
+## 2026-09-17 — Task #008: Generated Barcode Preview
+**Status:** 🟡 In Progress
+**Summary:** Added a live, non-printable Code 128 preview to the generated-barcode option in product registration.
+**Steps completed:**
+- [x] Reused the production barcode renderer for an accurate label preview
+- [x] Updated the preview as the user enters the product name
+- [x] Marked the placeholder as “Preview only” and kept printing exclusive to saved barcodes
+- [x] Passed 21 tests, ESLint, TypeScript, production build, and interface detector
+- [ ] Apply and live-test the Task #008 migration and complete hosted acceptance
+**Notes:** The preview encodes `INV-######`; Supabase still assigns the real unique number only after successful registration.
 
 ---
 

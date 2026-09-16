@@ -28,6 +28,28 @@ function BarcodeSvg({ product }: { product: LabelProduct }) {
   return <svg ref={ref} aria-labelledby={id} role="img"><title id={id}>Barcode {product.barcode}</title></svg>;
 }
 
+export function BarcodeGenerationPreview({ productName }: { productName: string }) {
+  const previewProduct: LabelProduct = {
+    name: productName.trim() || "Your product name",
+    barcode: "INV-######",
+    productCode: "Assigned after registration",
+  };
+
+  return (
+    <figure className="border-t border-[var(--border)] pt-4" aria-labelledby="generated-barcode-preview-title">
+      <div className="flex items-center justify-between gap-3">
+        <figcaption id="generated-barcode-preview-title" className="text-sm font-bold">Generated label preview</figcaption>
+        <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-900">Preview only</span>
+      </div>
+      <div className="mt-4 bg-white py-3 text-center">
+        <p className="truncate text-sm font-bold">{previewProduct.name}</p>
+        <div className="mt-2 flex justify-center overflow-hidden"><BarcodeSvg product={previewProduct} /></div>
+      </div>
+      <p className="mt-3 text-xs leading-5 text-[var(--muted-foreground)]">The actual unique `INV-######` number is assigned after registration. Only the saved barcode can be printed and used for inventory.</p>
+    </figure>
+  );
+}
+
 export function BarcodePrintPanel({ product, onClose, onReceive }: { product: LabelProduct; onClose: () => void; onReceive?: () => void }) {
   const [format, setFormat] = useState<"single" | "sheet">("single");
   const [copies, setCopies] = useState(1);
