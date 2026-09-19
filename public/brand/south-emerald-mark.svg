@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">South Emerald Supermarket mark</title>
+  <desc id="desc">A yellow shopping basket on an emerald circle surrounded by a red ring.</desc>
+  <circle cx="256" cy="256" r="224" fill="#ffffff" stroke="#e51b23" stroke-width="24"/>
+  <circle cx="256" cy="256" r="181" fill="#2ed866"/>
+  <g fill="#fff20a" transform="rotate(10 256 250)">
+    <path d="M129 157h229l-25 161c-3 19-19 33-38 33H179c-19 0-35-14-38-33z"/>
+    <path d="M342 169h50c12 0 22 7 26 18l8 19-25 10-6-15c-2-5-6-7-11-7h-46z"/>
+    <path d="M144 128h90l36 46H158z"/>
+    <rect x="270" y="99" width="35" height="84" rx="9" transform="rotate(32 287 141)"/>
+    <circle cx="232" cy="117" r="25"/>
+    <circle cx="319" cy="130" r="22"/>
+    <path d="M116 375c0-10 8-18 18-18h223v25H134c-10 0-18-3-18-7z"/>
+    <circle cx="166" cy="410" r="18"/>
+    <circle cx="326" cy="410" r="18"/>
+  </g>
+</svg>

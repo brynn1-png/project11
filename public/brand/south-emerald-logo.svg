@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 540" role="img" aria-labelledby="title desc">
+  <title id="title">South Emerald Supermarket</title>
+  <desc id="desc">A yellow shopping basket on an emerald circle with a red ring above the South Emerald Supermarket wordmark.</desc>
+  <g id="brand-mark">
+    <circle cx="320" cy="174" r="158" fill="#ffffff" stroke="#e51b23" stroke-width="16"/>
+    <circle cx="320" cy="174" r="126" fill="#2ed866"/>
+    <g fill="#fff20a" transform="rotate(10 320 170)">
+      <path d="M227 101h158l-17 111c-2 13-13 23-26 23h-80c-13 0-24-10-26-23z"/>
+      <path d="M374 110h35c8 0 15 5 18 12l5 13-17 7-4-10c-1-3-4-5-8-5h-31z"/>
+      <path d="M237 81h62l25 32h-77z"/>
+      <rect x="323" y="61" width="24" height="58" rx="6" transform="rotate(32 335 90)"/>
+      <circle cx="297" cy="74" r="17"/>
+      <circle cx="358" cy="83" r="15"/>
+      <path d="M218 252c0-7 6-13 13-13h155v17H231c-7 0-13-2-13-4z"/>
+      <circle cx="253" cy="274" r="12"/>
+      <circle cx="365" cy="274" r="12"/>
+    </g>
+  </g>
+
+  <g id="wordmark">
+    <path d="M48 286h404v70H48z" fill="#fff20a"/>
+    <path d="M106 350h476v79H106z" fill="#fff20a"/>
+    <text x="28" y="350" fill="#e51b23" font-family="Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif" font-size="86" letter-spacing="1">SOUTH</text>
+    <text x="130" y="425" fill="#e51b23" font-family="Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif" font-size="88" letter-spacing=".5">emerald</text>
+    <text x="132" y="493" fill="#2acb5b" font-family="Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif" font-size="55" letter-spacing="1.4">SUPERMARKET</text>
+  </g>
+</svg>

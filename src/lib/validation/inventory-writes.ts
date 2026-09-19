@@ -22,7 +22,7 @@ export const productInputSchema = z.object({
   categoryId: z.uuid("Select a category."),
   packageSize: z.number().positive("Package size must be greater than zero.").max(1000000),
   packageUnit: z.string().trim().min(1, "Enter the package unit.").max(24),
-  stockUnit: z.string().trim().min(1, "Enter the stock unit.").max(24),
+  stockUnit: z.string().trim().min(1, "Enter the unit of measure.").max(24),
   sellingPrice: z.number().min(0, "Selling price cannot be negative.").max(100000000),
   minimumStock: z.number().int("Minimum stock must be a whole number.").min(0).max(1000000),
   expiryTracking: expiryTrackingSchema,
@@ -60,6 +60,21 @@ export const receiveStockInputSchema = z.object({
   }
 });
 
+export const initialStockInputSchema = z.object({
+  quantity: z.number().int("Initial quantity must be a whole number.").min(1, "Initial quantity must be at least one.").max(1000000),
+  unitCost: z.number().positive("Purchase price must be greater than zero.").max(100000000),
+  expiresAt: dateField,
+  expiryTracking: expiryTrackingSchema,
+}).superRefine((value, context) => {
+  if (value.expiryTracking === "required" && !value.expiresAt) {
+    context.addIssue({ code: "custom", path: ["expiresAt"], message: "Expiry date is required for the initial stock." });
+  }
+  if (value.expiryTracking === "not_applicable" && value.expiresAt) {
+    context.addIssue({ code: "custom", path: ["expiresAt"], message: "This product does not track expiry dates." });
+  }
+});
+
 export type CategoryInput = z.infer<typeof categoryInputSchema>;
 export type ProductInput = z.infer<typeof productInputSchema>;
 export type ReceiveStockInput = z.infer<typeof receiveStockInputSchema>;
+export type InitialStockInput = z.infer<typeof initialStockInputSchema>;

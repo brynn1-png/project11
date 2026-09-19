@@ -28,7 +28,7 @@ The system is used on desktop and laptop computers with built-in or external web
 
 ## Capabilities and Constraints
 
-- Working name: Inventory System.
+- Product name: South Emerald Supermarket Inventory.
 - Uses secure email-and-password authentication with administrator, manager, inventory staff, and cashier roles.
 - Supports dashboard, products, inventory, stock-in, receipt-based sales, returns, sales verification, transaction history, reports, and user management.
 - Camera scanning supports compatible cameras exposed by the browser and lets users choose among available devices.
@@ -39,15 +39,18 @@ The system is used on desktop and laptop computers with built-in or external web
 - Returns remain linked to their original sale, wait for administrator or manager review, and restore inventory only when approved as resellable. Recent sales are selectable by authorized staff, while exact sale-number lookup remains available for older receipts. Damaged, expired, and rejected returns do not increase available stock.
 - Business days move from open to pending review to verified. Pending returns block verification only for their associated business day.
 - The latest product catalog and activity are cached in IndexedDB to speed repeated lookup and tolerate transient data-loading failures while the application remains open. Supabase remains the source of truth, sale confirmation requires a live connection, and full offline application startup is not required.
-- Administrators and managers can register and edit products and categories, assign manufacturer barcodes or generated `INV-######` Code 128 labels, and archive products. Administrators, managers, and inventory staff can receive one supplier batch atomically with purchase cost and expiry validation.
+- Administrators and managers can register and edit products and categories, assign one operational unit of measure, assign manufacturer barcodes or generated `INV-######` Code 128 labels, and archive products. A scanner may fill the manufacturer-barcode field, but its Enter suffix cannot submit the form; registration and edits require the explicit action button. Packaging details such as `175g` or `1.5L` belong in the product name or description. New-product registration can optionally create the first traceable inventory batch in the same atomic transaction; administrators, managers, and inventory staff can continue receiving later supplier batches through Stock In with purchase cost and expiry validation.
 - Stock In uses the configured scanner prefix and suffix to select products from any focused receiving field. Scanning never changes inventory by itself; switching products clears the previous receiving draft, and confirmation remains mandatory.
+- Products separates active and archived records. Administrators and managers may archive a zero-stock product with a reason and restore it later; products with stock or pending resellable returns remain active to prevent hidden inventory.
+- Transactions separates inventory activity, permanent sales receipts, and permanent return history. History is searchable, role-scoped, and includes receipt-line details, return review details, and 80 mm receipt printing.
+- The header notification center derives low-stock and out-of-stock alerts from the latest inventory snapshot. Products are flagged when quantity is at or below their configured restock level; authorized staff can open the selected product directly in Stock In, while read-only users are routed to the matching Inventory filter.
 - Product creation and stock receiving require a live database with the latest migration applied.
 - The system does not include supplier management, delivery tracking, multi-location management, advanced warehouse management, full accounting, or payment processing.
 - Camera access requires user permission and a secure browser context such as localhost or HTTPS.
 
 ## Evidence on Hand
 
-Project requirements are recorded in `req.md`. No real customer records, commercial claims, testimonials, logos, or production inventory data are available; the repository seed is development-only and clearly identified as synthetic.
+Project requirements are recorded in `req.md`. The client supplied a low-resolution South Emerald Supermarket raster logo; approved full and compact SVG reconstructions are stored in `public/brand/` and applied to the system. No real customer records, commercial claims, testimonials, or production inventory data are available; the repository seed is development-only and clearly identified as synthetic.
 
 ## Product Principles
 

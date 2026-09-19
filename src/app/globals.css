@@ -18,18 +18,18 @@
 }
 
 :root {
-  --background: #f4f7f6;
+  --background: #f7f9f2;
   --surface: #ffffff;
-  --surface-strong: #e9f0ed;
-  --foreground: #15201c;
-  --muted: #edf2f0;
-  --muted-foreground: #5c6c65;
-  --border: #dbe4e0;
-  --accent: #087a55;
-  --accent-strong: #066445;
-  --accent-soft: #d9eee6;
-  --destructive: #c93636;
-  --ring: #087a55;
+  --surface-strong: #edf4e8;
+  --foreground: #172318;
+  --muted: #eef4e9;
+  --muted-foreground: #5b6a5e;
+  --border: #dbe5d7;
+  --accent: #167a43;
+  --accent-strong: #105f34;
+  --accent-soft: #dff4e5;
+  --destructive: #cf1f27;
+  --ring: #168548;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
@@ -51,11 +51,11 @@ body {
 button, input, select, textarea { font: inherit; }
 button { -webkit-tap-highlight-color: transparent; }
 
-::selection { background: #a7ddc8; color: #10251c; }
+::selection { background: #fff48a; color: #172318; }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--background); }
-::-webkit-scrollbar-thumb { background: #bdcbc5; border: 3px solid var(--background); border-radius: 99px; }
+::-webkit-scrollbar-thumb { background: #b9c9b4; border: 3px solid var(--background); border-radius: 99px; }
 
 .panel {
   border: 1px solid var(--border);
@@ -89,7 +89,7 @@ button { -webkit-tap-highlight-color: transparent; }
 .data-table th { padding: 0.75rem 1rem; color: var(--muted-foreground); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; text-align: left; text-transform: uppercase; }
 .data-table td { border-top: 1px solid var(--border); padding: 0.9rem 1rem; font-size: 0.875rem; vertical-align: middle; }
 .data-table tbody tr { transition: background-color 150ms ease; }
-.data-table tbody tr:hover { background: #f7faf9; }
+.data-table tbody tr:hover { background: #fafcf7; }
 
 .view-enter {
   animation: view-enter 180ms var(--ease-out) both;
@@ -144,9 +144,20 @@ button { -webkit-tap-highlight-color: transparent; }
   .barcode-print-label p { margin: 0; max-width: 54mm; overflow: hidden; font-size: 9pt; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
   .barcode-print-label small { margin-top: 1mm; color: #444; font-size: 7pt; }
   .barcode-print-label svg { display: block; max-width: 100%; height: 20mm; }
+
+  .receipt-print-sheet { display: block !important; position: absolute; inset: 0; z-index: 9999; width: 80mm; background: white; color: #111; padding: 6mm; font: 10pt/1.4 sans-serif; }
+  body:has(.receipt-print-sheet) * { visibility: hidden; }
+  body:has(.receipt-print-sheet) .receipt-print-sheet,
+  body:has(.receipt-print-sheet) .receipt-print-sheet * { visibility: visible; }
+  .receipt-print-sheet h1 { font-size: 14pt; font-weight: 700; }
+  .receipt-print-lines { margin-block: 5mm; border-block: 0.2mm dashed #999; padding-block: 3mm; }
+  .receipt-print-lines div { display: grid; grid-template-columns: 1fr auto; gap: 1mm 3mm; margin-block: 2mm; }
+  .receipt-print-lines small { grid-column: 1 / -1; color: #555; }
+  .receipt-print-total { display: flex; justify-content: space-between; font-size: 12pt; }
 }
 
 .barcode-print-sheet { display: none; }
+.receipt-print-sheet { display: none; }
 
 @page barcode-single { size: 60mm 35mm; margin: 1.5mm; }
 @page barcode-sheet { size: A4; margin: 10mm; }

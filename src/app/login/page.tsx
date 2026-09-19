@@ -1,4 +1,5 @@
-import { Barcode, CheckCircle, Database, ShieldCheck } from "@phosphor-icons/react/dist/ssr";
+import Image from "next/image";
+import { CheckCircle, Database, ShieldCheck } from "@phosphor-icons/react/dist/ssr";
 import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/login-form";
 import { getCurrentUser } from "@/lib/auth/current-user";
@@ -9,14 +10,10 @@ export default async function LoginPage() {
   if (configured && (await getCurrentUser())) redirect("/");
 
   return (
-    <main className="grid min-h-[100dvh] bg-[#e8efec] lg:grid-cols-[1.08fr_.92fr]">
-      <section className="relative hidden overflow-hidden bg-[#163a2d] p-12 text-white lg:flex lg:flex-col lg:justify-between">
-        <div className="absolute -right-24 -top-24 size-80 rounded-full border-[56px] border-white/[.035]" />
-        <div className="flex items-center gap-3">
-          <div className="grid size-11 place-items-center rounded-xl bg-emerald-400 text-[#14392b]"><Barcode size={25} weight="bold" /></div>
-          <span className="text-lg font-bold">Inventory System</span>
-        </div>
-        <div className="relative max-w-xl">
+    <main className="grid min-h-[100dvh] bg-[var(--background)] lg:grid-cols-[1.08fr_.92fr]">
+      <section className="relative hidden overflow-hidden bg-[#16452e] p-12 text-white lg:flex lg:flex-col">
+        <div className="absolute -right-24 -top-24 size-80 rounded-full border-[56px] border-[#f4e90b]/[.055]" />
+        <div className="relative my-auto max-w-xl">
           <h1 className="max-w-lg text-5xl font-semibold leading-[1.05] tracking-[-0.035em]">Know what is on every shelf.</h1>
           <p className="mt-6 max-w-lg text-lg leading-8 text-white/70">Securely manage products, stock movement, purchases, and expiring inventory from one place.</p>
         </div>
@@ -26,9 +23,17 @@ export default async function LoginPage() {
       </section>
       <section className="flex items-center justify-center p-5 sm:p-10">
         <div className="w-full max-w-md">
+          <Image
+            src="/brand/south-emerald-logo.svg"
+            alt="South Emerald Supermarket"
+            width={196}
+            height={166}
+            className="mx-auto mb-8 hidden h-auto w-[196px] lg:block"
+            priority
+          />
           <div className="mb-10 flex items-center gap-3 lg:hidden">
-            <div className="grid size-11 place-items-center rounded-xl bg-[var(--accent)] text-white"><Barcode size={25} weight="bold" /></div>
-            <span className="text-lg font-bold">Inventory System</span>
+            <Image src="/brand/south-emerald-mark.svg" alt="" width={44} height={44} className="size-11 rounded-xl bg-white p-0.5" priority />
+            <span className="text-lg font-bold">South Emerald Supermarket</span>
           </div>
           <h2 className="text-3xl font-bold tracking-[-0.03em]">Welcome back</h2>
           <p className="mt-2 text-[var(--muted-foreground)]">Sign in with your assigned store account.</p>
@@ -56,4 +61,3 @@ function SetupRequired() {
     </section>
   );
 }
-

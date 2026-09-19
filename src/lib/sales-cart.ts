@@ -1,4 +1,5 @@
 import type { Product } from "@/lib/types";
+import { formatQuantity } from "@/lib/units";
 
 export type CartLine = { product: Product; quantity: number };
 
@@ -14,7 +15,7 @@ export function addProductToCart(cart: CartLine[], product: Product): CartResult
     return { ok: false, message: `${product.name} is out of stock.` };
   }
   if (nextQuantity > product.stock) {
-    return { ok: false, message: `Only ${product.stock} ${product.unit}${product.stock === 1 ? "" : "s"} are available.` };
+    return { ok: false, message: `Only ${formatQuantity(product.stock, product.unit)} are available.` };
   }
 
   return {
@@ -34,7 +35,7 @@ export function updateCartQuantity(cart: CartLine[], productId: string, nextQuan
     return { ok: true, quantity: 0, cart: cart.filter((item) => item.product.databaseId !== productId) };
   }
   if (nextQuantity > line.product.stock) {
-    return { ok: false, message: `Only ${line.product.stock} ${line.product.unit}${line.product.stock === 1 ? "" : "s"} are available.` };
+    return { ok: false, message: `Only ${formatQuantity(line.product.stock, line.product.unit)} are available.` };
   }
 
   return {

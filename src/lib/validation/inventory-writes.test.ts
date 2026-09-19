@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { productInputSchema, receiveStockInputSchema } from "@/lib/validation/inventory-writes";
+import { initialStockInputSchema, productInputSchema, receiveStockInputSchema } from "@/lib/validation/inventory-writes";
 
 const product = {
   name: "Brown Rice 1kg",
@@ -45,5 +45,17 @@ describe("inventory write validation", () => {
       expiryTracking: "not_applicable",
     });
     expect(result.success).toBe(true);
+  });
+
+  it("accepts opening stock for a non-expiring product", () => {
+    expect(initialStockInputSchema.safeParse({ quantity: 12, unitCost: 60, expiryTracking: "not_applicable" }).success).toBe(true);
+  });
+
+  it("requires an expiry date for opening stock that tracks expiry", () => {
+    expect(initialStockInputSchema.safeParse({ quantity: 12, unitCost: 60, expiryTracking: "required" }).success).toBe(false);
+  });
+
+  it("rejects zero opening quantity", () => {
+    expect(initialStockInputSchema.safeParse({ quantity: 0, unitCost: 60, expiryTracking: "not_applicable" }).success).toBe(false);
   });
 });

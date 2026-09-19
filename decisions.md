@@ -1,10 +1,78 @@
 # Decision Log
 
 ## Current State Summary (Updated: 2026-09-19)
-- **Active Decision:** Scan-anywhere hardware input now covers Sales and Stock In
+- **Active Decision:** Archive recoverable product records; keep receipts and returns as immutable history
 - **Status:** 🟢 Confirmed
-- **Latest Decision:** A Stock In scan selects a product but never changes inventory; switching products clears the previous receiving draft to prevent cross-product batch data
-- **Open Questions:** Live Stock In scanner acceptance, future adjustment approval, hosting, and final branding
+- **Latest Decision:** Place Archived products under Products and receipt/return history under Transactions rather than Settings
+- **Open Questions:** Future adjustment approval and hosting
+
+---
+
+## 2026-09-19 — Task #017: Archive and History Structure
+**Decision:** Products uses Active and Archived views, while Transactions uses Inventory activity, Sales receipts, and Returns views.
+**Why:** Archiving represents a recoverable catalog state. Receipts and returns are permanent evidence and must never be treated as deletable or restorable configuration.
+**Archive safeguards:** An archive reason is required. Products must have zero remaining stock and no pending resellable returns. New resellable returns cannot target archived products; damaged and expired returns remain valid.
+**Permissions:** Any signed-in operational user may view archive and permitted history. Only administrators and managers may archive or restore products. Receipt and return visibility follows the existing rule: elevated operational roles see all records, while cashiers see their own.
+**History scope:** The first 100 receipts and returns load with product details and search; database functions cap requests at 500. Receipt printing uses an 80 mm layout.
+**Alternative rejected:** A Settings archive, because discontinued products and historical transactions are operational records rather than application configuration.
+
+---
+
+## 2026-09-19 — Task #016: Product Barcode Confirmation
+**Decision:** Treat Enter in the product barcode field as the end of a scanner input, not as permission to submit the form.
+**Why:** USB scanners emulate a keyboard and commonly append Enter. Native form behavior was therefore saving a valid product before the user could review its details.
+**Scope:** The safeguard applies to manufacturer-barcode entry in both registration and editing. It does not alter the purpose-built scanner workflows in Sales or Stock In.
+**Confirmation rule:** Register product and Save changes remain explicit button actions after scanning.
+**Alternative rejected:** Removing the scanner's Enter suffix globally, because Sales and Stock In use it to delimit scan input safely.
+
+---
+
+## 2026-09-19 — Task #015: Opening Stock Registration
+**Decision:** Let administrators and managers optionally create the first inventory batch while registering a product.
+**Why:** This removes the extra trip to Stock In without bypassing purchase-cost, expiry, batch, audit, and inventory-movement records.
+**Required fields:** Enabling the shortcut requires a whole-number quantity and purchase price per unit. An expiry date is also required when the product uses expiry tracking.
+**Atomicity:** Product creation and opening-stock receipt run inside one database function and transaction. If either step fails, neither record remains.
+**Default behavior:** The option is off by default, so a product can still be registered with zero stock and received later through Stock In.
+**Alternative rejected:** Adding a quantity directly to the product record, because on-hand inventory is derived from batches and movements rather than stored as an untraceable product field.
+
+---
+
+## 2026-09-19 — Task #014: Product Unit Model
+**Decision:** Keep one user-facing Unit of measure field and remove Package size and Package unit from registration, editing, and operational displays.
+**Why:** The system counts sellable inventory rather than calculating package contents. One unit such as box, kilo, piece, bottle, or can is sufficient for sales, receiving, thresholds, and reporting.
+**Description use:** Packaging details such as `175g`, `1.5L`, or `5kg` may be written in the product name or optional description. Descriptions are now visible in the Products list and Stock In product details.
+**Database compatibility:** The existing schema still requires `package_size` and `package_unit`. Existing values are preserved when products are edited. New products receive internal values of `1` and the selected unit of measure, without exposing those compatibility fields in the form.
+**Formatting:** Countable units receive basic singular/plural formatting, while measurement symbols such as `kg` and `ml` remain unchanged.
+**Boundary:** No database migration or inventory calculation change was introduced.
+
+---
+
+## 2026-09-19 — Task #013: Stock Alert Behavior
+**Decision:** Derive header notifications from the current inventory snapshot instead of creating stored notification records.
+**Why:** Low-stock status is current operational state. Derived alerts cannot become stale, require no migration, and resolve automatically after receiving raises stock above the threshold.
+**Threshold:** Quantity `0` is Out of Stock. A positive quantity at or below `minimumStock` is Low Stock. Quantities above `minimumStock` do not produce alerts.
+**Ordering:** Out-of-stock products appear first; products within each status are ordered by current quantity and then name.
+**Permissions:** Administrators, managers, and inventory staff open an alert directly in Stock In with that product selected. Cashiers and other users without receiving permission open the matching Inventory status filter.
+**Interaction:** The bell displays the current alert count. The panel closes through its close control, outside pointer input, Escape, navigation, or alert selection. Alerts cannot be dismissed independently while the inventory condition remains unresolved.
+**Storage boundary:** No notification table or read/unread state was added.
+
+---
+
+## 2026-09-19 — Task #012: Login Logo Placement
+**Decision:** Place the full South Emerald logo directly on the light sign-in panel and remove its white card from the green presentation panel.
+**Why:** The light surface naturally accommodates the logo's white areas, avoiding the appearance of a floating white tile and grouping the store identity with the authentication task.
+**Layout:** Center the logo horizontally within the right sign-in section while keeping the heading, explanatory text, labels, fields, and button left-aligned for readability. Recenter the green-panel message vertically and leave the benefits row anchored below it.
+**Responsive decision:** Retain the existing compact mark-and-name treatment on smaller screens so the full wordmark does not consume excessive vertical space.
+**Boundary:** Authentication behavior, form fields, and login actions are unchanged.
+
+---
+
+## 2026-09-19 — Task #011: Logo Reconstruction Method
+**Decision:** Manually rebuild the logo as native SVG geometry with a separate compact mark, rather than auto-tracing the low-resolution raster.
+**Why:** Automatic tracing would preserve blurry edges and compression artifacts. Native shapes remain sharp at every size and are easier to adapt for the application shell and favicon.
+**Boundary:** The reconstructed wording uses a close condensed system-font match because the official font and source paths are unavailable. The assets must be visually approved before being treated as final client branding.
+**Implementation:** The user approved applying the reconstruction. The full logo is used on desktop sign-in, the compact mark is used in the application shell, mobile sign-in, and metadata icon, and the interface uses restrained brand colors without changing workflow hierarchy.
+**Color decision:** Keep dark green as the dominant operational surface, use a darker accessible emerald for actions, reserve bright yellow for active navigation and small emphasis, and retain red for destructive or urgent meaning.
 
 ---
 
@@ -13,6 +81,7 @@
 **Why:** Keyboard-emulating scanner input should not corrupt quantity, cost, date, batch, reference, or notes fields, and receiving must remain an explicit confirmed transaction.
 **Draft safety:** Rescanning the selected product preserves the unfinished receipt. Selecting a different product clears all product-specific receipt fields before switching. Unknown codes leave the current selection and draft unchanged.
 **Transaction boundary:** A scan only identifies a product and focuses Quantity. Only Confirm stock receipt calls the atomic database receiving action.
+**Acceptance:** The user accepted the implemented behavior and continued to client-personalization work.
 
 ---
 

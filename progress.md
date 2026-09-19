@@ -1,16 +1,133 @@
 # Progress Log
 
 ## Current State Summary (Updated: 2026-09-19)
-- **Active Task:** Task #010 — Scan-anywhere Stock In selection
-- **Status:** 🟡 Implemented; live scanner acceptance pending
-- **Next Action:** Verify Stock In product selection with the YHD-8200L while a receiving field has focus
-- **Blockers:** None for implementation; final acceptance requires the user's physical scanner
-- **Last Completed:** Task #009 on 2026-09-19
+- **Active Task:** Task #017 — Product archive and transaction history
+- **Status:** 🟡 Implemented locally; database migrations and live acceptance pending
+- **Next Action:** Apply the two `20260919` migrations to Supabase in filename order, then test archive/restore and history
+- **Blockers:** The hosted database does not yet expose the Task #015 and Task #017 functions
+- **Last Completed:** Task #016 on 2026-09-19
+
+---
+
+## 2026-09-19 — Task #017: Product Archive and Transaction History
+**Status:** 🟡 Implementation complete; hosted migration pending
+**Summary:** Added recoverable product archives under Products and permanent receipt/return history under Transactions.
+**Steps completed:**
+- [x] Add Active products and Archived products views
+- [x] Require and preserve an archive reason, actor, and timestamp
+- [x] Add manager-authorized product restoration
+- [x] Block archiving while stock remains
+- [x] Protect against archived products receiving hidden stock through resellable returns
+- [x] Add Inventory activity, Sales receipts, and Returns history tabs
+- [x] Add searchable receipt and return records with role-aware visibility
+- [x] Add printable 80 mm receipt output
+- [x] Pass 43 tests, ESLint, TypeScript, production build, diff validation, and interface detector
+- [ ] Apply `20260919000200_archive_and_history.sql` to hosted Supabase
+- [ ] Complete live archive, restore, history, and printing acceptance tests
+**Notes:** Receipts, returns, stock movements, and audit records remain permanent history; only recoverable product catalog records are archived.
+
+---
+
+## 2026-09-19 — Task #016: Prevent Scanner Auto-Submission
+**Status:** 🟢 Done
+**Summary:** Prevented the hardware scanner's Enter suffix from submitting product registration or product editing while the barcode field is focused.
+**Steps completed:**
+- [x] Confirm the browser was treating the scanner's Enter suffix as a native form submission
+- [x] Intercept Enter only in the manufacturer-barcode field
+- [x] Preserve normal barcode capture and explicit Register product or Save changes actions
+- [x] Add helper text explaining that scanning does not save automatically
+- [x] Pass 43 tests, ESLint, TypeScript, production build, and interface detector
+**Notes:** Sales and Stock In scanner behavior is unchanged.
+
+---
+
+## 2026-09-19 — Task #015: Initial Stock During Product Registration
+**Status:** 🟡 Implementation complete; hosted migration pending
+**Summary:** Added an optional shortcut that registers a product and receives its opening inventory as one atomic operation.
+**Steps completed:**
+- [x] Add an opt-in Add initial stock now section for new products
+- [x] Require quantity and purchase price per unit when the shortcut is enabled
+- [x] Require an expiry date when the product tracks expiry
+- [x] Keep normal zero-stock registration available
+- [x] Add server-side validation for the opening batch
+- [x] Add an atomic Supabase function that rolls back both records if either operation fails
+- [x] Avoid offering a second opening-stock action immediately after the atomic workflow succeeds
+- [x] Pass 43 tests, ESLint, TypeScript, production build, and interface detector
+- [ ] Apply the new migration to the hosted Supabase project
+- [ ] Complete one live product-plus-opening-stock acceptance test
+**Notes:** The shortcut records a normal receiving transaction and inventory batch, preserving purchase-cost and expiry reporting.
+
+---
+
+## 2026-09-19 — Task #014: Simplify Product Units
+**Status:** 🟢 Done
+**Summary:** Removed package size and package unit from the visible product workflow and retained one operational Unit of measure field.
+**Steps completed:**
+- [x] Remove Package size and Package unit from product registration and editing
+- [x] Rename Counted as to Unit of measure with clearer examples and helper text
+- [x] Preserve existing package values during edits and provide neutral compatibility values for new database records
+- [x] Show optional descriptions in the Products list and Stock In selection
+- [x] Remove package-size details from Products and Stock In displays
+- [x] Format box, piece, kilo, and measurement-symbol quantities consistently across the interface
+- [x] Add unit-formatting tests
+- [x] Pass 40 tests, ESLint, TypeScript, production build, and interface detector
+**Notes:** No Supabase migration is required. Package fields remain internal only because the current production schema requires them.
+
+---
+
+## 2026-09-19 — Task #013: Live Stock Notifications
+**Status:** 🟢 Done
+**Summary:** Converted the decorative notification bell into a live stock-alert center driven by each product's current quantity and restock level.
+**Steps completed:**
+- [x] Flag products when quantity is at or below the configured restock level
+- [x] Prioritize out-of-stock alerts, then low-stock items by quantity
+- [x] Replace the permanent red dot with the actual alert count
+- [x] Add a responsive notification panel with current quantity and threshold details
+- [x] Route authorized users to Stock In with the product selected
+- [x] Route users without receiving permission to the matching Inventory filter
+- [x] Support outside-click and Escape-key closing with focus restoration
+- [x] Add threshold, ordering, and empty-state unit tests
+- [x] Pass 38 tests, ESLint, TypeScript, production build, and interface detector
+**Notes:** Alerts are derived from the latest live or cached inventory snapshot and disappear automatically once stock rises above the restock level. They are not dismissible while the stock condition remains unresolved.
+
+---
+
+## 2026-09-19 — Task #012: Login Logo Placement
+**Status:** 🟢 Done
+**Summary:** Moved the full South Emerald logo from its white card on the green login panel to the light sign-in panel and centered it above the form.
+**Steps completed:**
+- [x] Remove the desktop logo card from the green panel
+- [x] Place the full logo above the desktop sign-in heading without a wrapper or shadow
+- [x] Center the desktop logo horizontally within the sign-in section
+- [x] Recenter the green-panel message after removing its top branding block
+- [x] Preserve the compact mobile logo header
+- [x] Pass 35 tests, ESLint, TypeScript, production build, and layout detector
+**Notes:** Automated checks passed. The connected browser surface was unavailable, so final visual confirmation remains with the user's already-running local browser.
+
+---
+
+## 2026-09-19 — Task #011: South Emerald Logo Reconstruction
+**Status:** 🟢 Done
+**Summary:** Reconstructed the supplied low-resolution South Emerald Supermarket logo as scalable vector artwork and applied a restrained brand treatment to the system.
+**Steps completed:**
+- [x] Create a transparent full wordmark SVG
+- [x] Create a compact circular SVG mark for navigation and favicon use
+- [x] Preserve the supplied red, yellow, emerald, and white palette
+- [x] Render 1200px and 800px PNG previews
+- [x] Visually inspect both previews at full resolution
+- [x] Validate both SVG files as parseable XML
+- [x] Receive user approval and apply the assets to the interface
+- [x] Replace generic shell and login branding with South Emerald assets and naming
+- [x] Add the compact mark as the application icon/favicon
+- [x] Adapt the background, primary green, destructive red, selection color, sidebar, and limited yellow highlights
+- [x] Verify desktop and mobile login rendering
+- [x] Pass 35 tests, ESLint, TypeScript, production build, diff validation, and interface detector
+**Notes:** The artwork is a clean reconstruction, not an official source-vector conversion. The original typeface was unavailable, so the wordmark uses a close condensed-font match. Application workflows and database behavior were unchanged.
 
 ---
 
 ## 2026-09-19 — Task #010: Scan-Anywhere Stock In Selection
-**Status:** 🟡 In Progress — implementation complete; physical acceptance pending
+**Status:** 🟢 Done
 **Summary:** Reused the protected hardware-scanner capture on Stock In so a scan selects the receiving product without placing barcode characters into batch fields.
 **Steps completed:**
 - [x] Capture configured `F9`-prefixed scans while any Stock In field has focus
@@ -22,8 +139,8 @@
 - [x] Keep inventory unchanged until Confirm stock receipt
 - [x] Preserve the current draft when an unknown code is scanned
 - [x] Pass 35 tests, ESLint, TypeScript, production build, and interface detector
-- [ ] Complete a live Stock In scan test with the YHD-8200L
-**Notes:** Stock In scanning identifies the product only. It never creates a receipt or changes inventory automatically.
+- [x] Complete a live Stock In scan test with the YHD-8200L
+**Notes:** The user accepted the Stock In behavior and moved to client personalization. Stock In scanning identifies the product only; it never creates a receipt or changes inventory automatically.
 
 ---
 

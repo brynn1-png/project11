@@ -1,10 +1,130 @@
 # Results Log
 
 ## Current State Summary (Updated: 2026-09-19)
-- **Active Task:** Task #010 — Scan-anywhere Stock In selection
-- **Status:** 🟡 Awaiting physical scanner acceptance
-- **Latest Result:** Stock In now routes protected scanner input to product selection while keeping receipt submission explicit
-- **Verification:** 35 tests, ESLint, TypeScript, production build, and interface detector passed
+- **Active Task:** Task #017 — Product archive and transaction history
+- **Status:** 🟡 Local implementation verified; hosted migrations pending
+- **Latest Result:** Products now have a recoverable archive, while receipts and returns have permanent searchable history
+- **Verification:** 43 tests, ESLint, TypeScript, production build, and Impeccable interface detector passed
+
+---
+
+## 2026-09-19 — Task #017: Archive and History Result
+**Outcome:** Products now separates active and archived records. Archived products retain their code, barcode, category, reason, timestamp, and actor and may be restored by an administrator or manager.
+**Integrity result:** The database rejects archive requests while stock remains or a resellable return is pending. It also prevents archived products from receiving newly requested resellable returns, avoiding hidden inventory.
+**History result:** Transactions now provides searchable Inventory activity, Sales receipts, and Returns views. Receipts include cashier, lines, totals, returned quantities, and printable 80 mm output; returns include original sale, reason, disposition, requester, reviewer, and status.
+**Files added:**
+- `src/app/history/actions.ts`
+- `src/components/history-view.tsx`
+- `supabase/migrations/20260919000200_archive_and_history.sql`
+**Verification results:**
+- `npm run test`: 43 tests passed across 10 files
+- `npm run lint`: passed
+- `npx tsc --noEmit`: passed
+- `npm run build`: passed
+- Impeccable interface detector: no findings
+- `git diff --check`: passed apart from expected Windows line-ending warnings
+**Pending verification:** Apply the migration to hosted Supabase and complete live archive, restoration, history, permission, and receipt-print tests.
+
+---
+
+## 2026-09-19 — Task #016: Scanner Submission Safeguard Result
+**Outcome:** A scanner can populate the product Barcode field, but its trailing Enter no longer triggers registration or saves an edit.
+**Interaction result:** The user must review the form and select Register product or Save changes explicitly. Helper text communicates this behavior next to the field.
+**Scope result:** Sales and Stock In keep their existing scanner routing and Enter-delimited workflow.
+**Verification results:**
+- `npm run test`: 43 tests passed across 10 files
+- `npm run lint`: passed
+- `npx tsc --noEmit`: passed
+- `npm run build`: passed
+- Impeccable interface detector: no findings
+- `git diff --check`: passed apart from expected Windows line-ending warnings
+
+---
+
+## 2026-09-19 — Task #015: Initial Stock Registration Result
+**Outcome:** The new-product form now offers an optional Add initial stock now section. It collects quantity, purchase price per unit, and an expiry date when required.
+**Database result:** Added `register_inventory_product_with_initial_stock`, which calls the existing product-registration and stock-receiving functions in one transaction and returns the new product plus receipt details.
+**Integrity result:** The shortcut creates the same batch, cost, inventory adjustment, and audit records as Stock In. Any failure rolls back the complete operation.
+**Files added:**
+- `supabase/migrations/20260919000100_product_initial_stock.sql`
+**Verification results:**
+- `npm run test`: 43 tests passed across 10 files
+- `npm run lint`: passed
+- `npx tsc --noEmit`: passed
+- `npm run build`: passed
+- Impeccable interface detector: no findings
+- `git diff --check`: passed apart from expected Windows line-ending warnings
+**Pending verification:** Apply the migration to hosted Supabase and complete one live registration with opening stock.
+
+---
+
+## 2026-09-19 — Task #014: Simplified Product Unit Result
+**Outcome:** Product registration and editing now expose one Unit of measure field with examples such as box, kilo, and piece. Package size and package unit are no longer requested from users.
+**Operational result:** The selected unit is used consistently in Products, Stock In, Inventory, reports, sales availability errors, dashboard thresholds, and stock notifications.
+**Description result:** Optional descriptions are displayed in the Products list and Stock In details, allowing packaging information to remain available without additional structured fields.
+**Compatibility result:** Existing database package values are preserved during edits. New records receive neutral internal compatibility values, so the current Supabase schema continues working without a migration.
+**Files added:**
+- `src/lib/units.ts`
+- `src/lib/units.test.ts`
+**Verification results:**
+- `npm run test`: 40 tests passed across 10 files
+- `npm run lint`: passed
+- `npx tsc --noEmit`: passed
+- `npm run build`: passed
+- Impeccable interface detector: no findings
+
+---
+
+## 2026-09-19 — Task #013: Live Stock Notification Result
+**Outcome:** The static notification indicator is now a functional stock-alert center. Its badge shows the current number of products at or below their restock level.
+**Alert result:** Opening the bell lists out-of-stock products first and low-stock products afterward, with each product's current quantity and configured threshold. A clear empty state appears when no products need attention.
+**Navigation result:** Staff with receiving permission can open the affected product directly in Stock In. Other users are sent to the corresponding Low Stock or Out of Stock Inventory filter.
+**Refresh result:** Alerts use the Inventory Provider snapshot, so confirmed sales, receipts, product changes, the existing periodic refresh, and cache fallback all feed the same calculation.
+**Accessibility result:** The bell exposes its count and expanded state, and the panel supports keyboard selection, Escape closing, outside-click closing, and focus restoration from its close button.
+**Files added:**
+- `src/lib/stock-alerts.ts`
+- `src/lib/stock-alerts.test.ts`
+**Verification results:**
+- `npm run test`: 38 tests passed across 9 files
+- `npm run lint`: passed
+- `npx tsc --noEmit`: passed
+- `npm run build`: passed
+- Impeccable interface detector: no findings
+
+---
+
+## 2026-09-19 — Task #012: Login Logo Placement Result
+**Outcome:** The full South Emerald logo was removed from its separate white card on the green panel and centered above the desktop sign-in heading on the light panel.
+**Layout result:** The logo is horizontally centered while the form content remains left-aligned. The green panel centers its headline and supporting copy within the available height while retaining the bottom benefits row. Mobile continues to use the compact mark and store name.
+**Behavior result:** Login authentication and form behavior were not changed.
+**Verification results:**
+- `npm run test`: 35 tests passed across 8 files
+- `npm run lint`: passed
+- `npx tsc --noEmit`: passed
+- `npm run build`: passed
+- Impeccable layout detector: no findings
+**Known verification limitation:** No connected browser was available for an automated screenshot pass; the user can visually confirm the result in the running local application.
+
+---
+
+## 2026-09-19 — Task #011: Reconstructed Logo Result
+**Outcome:** Added a scalable full South Emerald Supermarket logo and a compact circular brand mark, both with transparent outer backgrounds.
+**Files created:**
+- `public/brand/south-emerald-logo.svg`
+- `public/brand/south-emerald-mark.svg`
+- `public/brand/south-emerald-logo-preview.png`
+- `public/brand/south-emerald-mark-preview.png`
+**Verification results:** Both SVGs parsed successfully as XML; the 1200px full-logo and 800px compact-mark previews rendered successfully and were visually inspected.
+**Interface result:** Applied the full wordmark to desktop sign-in, the compact mark to the sidebar and mobile sign-in, and the mark as the metadata icon. Replaced generic Inventory System shell naming with South Emerald naming.
+**Color result:** Introduced a warm off-white canvas, accessible brand emerald actions, a deeper green sidebar, logo red for destructive states, and limited yellow for active navigation and key calls to action.
+**Verification results after integration:**
+- `npm run test`: 35 tests passed across 8 files
+- `npm run lint`: passed
+- `npx tsc --noEmit`: passed
+- `npm run build`: passed
+- Desktop and mobile sign-in screenshots: visually inspected
+- Impeccable interface detector: no findings
+**Acceptance:** The user approved implementing the reconstructed assets in the system.
 
 ---
 
@@ -18,7 +138,7 @@
 - `npx tsc --noEmit`: passed
 - `npm run build`: passed
 - Impeccable interface detector: no findings
-**Acceptance remaining:** Confirm the focused-field scan behavior with the physical YHD-8200L on Stock In.
+**Acceptance:** The user accepted the behavior and moved to client-personalization work.
 
 ---
 

@@ -5,8 +5,9 @@ import "./globals.css";
 const figtree = Figtree({ subsets: ["latin"], variable: "--font-figtree" });
 
 export const metadata: Metadata = {
-  title: "Inventory System",
-  description: "Barcode-enabled grocery inventory management",
+  title: "South Emerald Supermarket Inventory",
+  description: "Inventory and sales operations for South Emerald Supermarket",
+  icons: { icon: "/brand/south-emerald-mark.svg" },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
