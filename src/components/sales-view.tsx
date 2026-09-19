@@ -10,12 +10,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import type { Product } from "@/lib/types";
-
-type CartLine = { product: Product; quantity: number };
+import { addProductToCart, updateCartQuantity, type CartLine } from "@/lib/sales-cart";
 
 function peso(value: number) {
   return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(value);
@@ -25,13 +23,12 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
   const { products, dataSource } = useInventory();
   const router = useRouter();
   const barcodeRef = useRef<HTMLInputElement>(null);
-  const quantityRef = useRef<HTMLInputElement>(null);
+  const cartRef = useRef<CartLine[]>([]);
   const [barcode, setBarcode] = useState("");
-  const [selected, setSelected] = useState<Product | null>(null);
-  const [quantity, setQuantity] = useState(1);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [notes, setNotes] = useState("");
   const [message, setMessage] = useState("");
+  const [scanStatus, setScanStatus] = useState("");
   const [lastSale, setLastSale] = useState<{ number: string; total: number } | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [online, setOnline] = useState(true);
@@ -52,41 +49,53 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
   const total = useMemo(() => cart.reduce((sum, line) => sum + line.product.price * line.quantity, 0), [cart]);
   const itemCount = useMemo(() => cart.reduce((sum, line) => sum + line.quantity, 0), [cart]);
 
-  function selectByBarcode(value: string) {
-    const clean = value.trim();
-    const product = products.find((item) => item.barcode === clean) ?? null;
-    setBarcode(clean);
-    setSelected(product);
-    setQuantity(1);
-    setMessage(product ? "" : "No active product matches this barcode.");
-    if (product) window.setTimeout(() => quantityRef.current?.select(), 0);
+  function commitCart(next: CartLine[]) {
+    cartRef.current = next;
+    setCart(next);
+    setSaleKey(crypto.randomUUID());
   }
 
-  function addToCart() {
-    if (!selected) return setMessage("Scan or select a product first.");
-    if (!Number.isInteger(quantity) || quantity < 1) return setMessage("Enter a whole-number quantity of at least one.");
-    const alreadyAdded = cart.find((line) => line.product.databaseId === selected.databaseId)?.quantity ?? 0;
-    if (alreadyAdded + quantity > selected.stock) return setMessage(`Only ${selected.stock} ${selected.unit}${selected.stock === 1 ? "" : "s"} are available.`);
+  function focusBarcode(select = false) {
+    window.setTimeout(() => {
+      barcodeRef.current?.focus();
+      if (select) barcodeRef.current?.select();
+    }, 0);
+  }
 
-    setCart((current) => {
-      const existing = current.find((line) => line.product.databaseId === selected.databaseId);
-      return existing
-        ? current.map((line) => line.product.databaseId === selected.databaseId ? { ...line, quantity: line.quantity + quantity } : line)
-        : [...current, { product: selected, quantity }];
-    });
-    setSaleKey(crypto.randomUUID());
+  function addBarcodeToCart(value: string) {
+    const clean = value.trim();
+    const product = products.find((item) => item.barcode === clean) ?? null;
+    if (!clean || !product) {
+      setBarcode(clean);
+      setScanStatus("");
+      setMessage(clean ? "No active product matches this barcode." : "Scan or enter a barcode first.");
+      focusBarcode(true);
+      return;
+    }
+
+    const result = addProductToCart(cartRef.current, product);
+    if (!result.ok) {
+      setBarcode(clean);
+      setScanStatus("");
+      setMessage(result.message);
+      focusBarcode(true);
+      return;
+    }
+
+    commitCart(result.cart);
     setBarcode("");
-    setSelected(null);
-    setQuantity(1);
     setMessage("");
-    window.setTimeout(() => barcodeRef.current?.focus(), 0);
+    setLastSale(null);
+    setScanStatus(`Added ${product.name} — ${result.quantity} in current sale.`);
+    focusBarcode();
   }
 
   function changeQuantity(productId: string, next: number) {
-    setSaleKey(crypto.randomUUID());
-    setCart((current) => current
-      .map((line) => line.product.databaseId === productId ? { ...line, quantity: Math.min(Math.max(next, 0), line.product.stock) } : line)
-      .filter((line) => line.quantity > 0));
+    const result = updateCartQuantity(cartRef.current, productId, next);
+    if (!result.ok) return setMessage(result.message);
+    commitCart(result.cart);
+    setMessage("");
+    setScanStatus(result.quantity === 0 ? "Product removed from the current sale." : "Quantity updated.");
   }
 
   function confirmSale() {
@@ -102,6 +111,7 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
       });
       if (!result.ok) return setMessage(result.message);
       setLastSale({ number: result.saleNumber, total: result.totalAmount });
+      cartRef.current = [];
       setCart([]);
       setNotes("");
       setSaleKey(crypto.randomUUID());
@@ -118,7 +128,7 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
           <CardHeader className="flex-row items-start justify-between gap-4">
             <div className="flex min-w-0 flex-col gap-1.5">
               <CardTitle>Scan a product</CardTitle>
-              <CardDescription>Scan once, enter the quantity, then add it to the current sale.</CardDescription>
+              <CardDescription>Scan to add one item. Scan again or edit its quantity in the current sale.</CardDescription>
             </div>
             <Badge variant={online && dataSource === "live" ? "default" : "destructive"} className="shrink-0">
               {online && dataSource === "live" ? <WifiHigh weight="bold" /> : <WifiSlash weight="bold" />}
@@ -126,44 +136,23 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
             </Badge>
           </CardHeader>
           <CardContent className="flex flex-col gap-5">
-            <form className="flex flex-col gap-3 sm:flex-row" onSubmit={(event) => { event.preventDefault(); selectByBarcode(barcode); }}>
+            <form className="flex flex-col gap-3 sm:flex-row" onSubmit={(event) => { event.preventDefault(); addBarcodeToCart(barcode); }}>
               <div className="relative flex-1">
                 <Barcode className="absolute left-3.5 top-3.5 text-[var(--muted-foreground)]" size={18} />
                 <Input ref={barcodeRef} className="pl-10" value={barcode} onChange={(event) => setBarcode(event.target.value)} placeholder="Scan or enter barcode" aria-label="Product barcode" autoFocus />
               </div>
-              <Button type="submit">Find product</Button>
+              <Button type="submit"><Plus data-icon="inline-start" />Add to sale</Button>
               <Button type="button" variant="secondary" onClick={() => setCameraOpen((current) => !current)}>
                 <Camera data-icon="inline-start" />{cameraOpen ? "Hide camera" : "Use camera"}
               </Button>
             </form>
 
-            {cameraOpen && <div className="rounded-2xl border border-[var(--border)] p-4"><CameraScanner onDetected={selectByBarcode} /></div>}
+            {cameraOpen && <div className="rounded-2xl border border-[var(--border)] p-4"><CameraScanner onDetected={addBarcodeToCart} /></div>}
 
             {message && <Alert variant="destructive"><WarningCircle /><AlertTitle>Sale needs attention</AlertTitle><AlertDescription>{message}</AlertDescription></Alert>}
 
             {lastSale && <Alert><CheckCircle /><AlertTitle>Sale #{lastSale.number} confirmed</AlertTitle><AlertDescription>{peso(lastSale.total)} was recorded. Use sale number {lastSale.number} if any item is returned.</AlertDescription></Alert>}
-
-            {selected ? (
-              <div className="rounded-2xl bg-[var(--muted)] p-5">
-                <div className="flex flex-col gap-5 sm:flex-row sm:items-end">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-lg font-bold">{selected.name}</p>
-                    <p className="mt-1 font-mono text-xs text-[var(--muted-foreground)]">{selected.barcode} · {selected.id}</p>
-                    <p className="mt-3 text-sm"><strong>{peso(selected.price)}</strong> · {selected.stock} {selected.unit}{selected.stock === 1 ? "" : "s"} available</p>
-                  </div>
-                  <Field className="sm:w-40">
-                    <FieldLabel htmlFor="sale-quantity">Quantity</FieldLabel>
-                    <Input ref={quantityRef} id="sale-quantity" type="number" min="1" max={selected.stock} step="1" value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addToCart(); } }} />
-                    <FieldDescription>Whole units</FieldDescription>
-                  </Field>
-                  <Button onClick={addToCart} disabled={selected.stock === 0}><Plus data-icon="inline-start" />Add to sale</Button>
-                </div>
-              </div>
-            ) : (
-              <div className="grid min-h-40 place-items-center rounded-2xl border border-dashed border-[var(--border)] p-6 text-center">
-                <div><Barcode className="mx-auto text-[var(--muted-foreground)]" size={28} /><p className="mt-3 font-semibold">Ready for the next barcode</p><p className="mt-1 text-sm text-[var(--muted-foreground)]">The selected product and quantity control will appear here.</p></div>
-              </div>
-            )}
+            {!message && <div className="flex min-h-6 items-center gap-2 text-sm" role="status" aria-live="polite">{scanStatus ? <><CheckCircle className="shrink-0 text-[var(--accent)]" size={18} weight="fill" /><span className="font-medium">{scanStatus}</span></> : <><Barcode className="shrink-0 text-[var(--muted-foreground)]" size={18} /><span className="text-[var(--muted-foreground)]">Ready for the next barcode.</span></>}</div>}
           </CardContent>
         </Card>
       </div>

@@ -1,11 +1,28 @@
 # Progress Log
 
 ## Current State Summary (Updated: 2026-09-19)
-- **Active Task:** None — ready for user-requested personal changes
-- **Status:** 🟢 MVP Done
-- **Next Action:** Plan the first personal change requested by the user
-- **Blockers:** None for the accepted MVP; physical device tests, production deployment, and final branding remain external pending work
+- **Active Task:** Task #009 — Direct-to-cart barcode scanning
+- **Status:** 🟡 Implemented; live scanner acceptance pending
+- **Next Action:** Verify repeated scans with the YHD-8200L in the Sales workspace
+- **Blockers:** None for implementation; final acceptance requires the user's physical scanner
 - **Last Completed:** Task #008 on 2026-09-19
+
+---
+
+## 2026-09-19 — Task #009: Direct-to-Cart Barcode Scanning
+**Status:** 🟡 In Progress — implementation complete; physical acceptance pending
+**Summary:** Simplified Sales so each barcode scan immediately adds one unit to the current receipt instead of requiring a second “Add to sale” step.
+**Steps completed:**
+- [x] Add the first scan directly to Current sale with quantity one
+- [x] Increment the existing cart line when the same product is scanned again
+- [x] Keep quantity editing, removal, totals, and notes inside Current sale
+- [x] Preserve receipt-level database validation and the single atomic write on Confirm sale
+- [x] Reject unknown, out-of-stock, and above-stock scans without changing inventory
+- [x] Return keyboard focus to the barcode field after each accepted or rejected scan
+- [x] Add a camera duplicate-read cooldown without preventing intentional repeat scans
+- [x] Pass 27 tests, ESLint, TypeScript, production build, and interface detector
+- [ ] Complete a live repeated-scan test with the YHD-8200L
+**Notes:** Scans update browser cart state only. Supabase is not written per product; it is updated once for the complete receipt after confirmation.
 
 ---
 

@@ -34,7 +34,7 @@ The system is used on desktop and laptop computers with built-in or external web
 - Camera scanning supports compatible cameras exposed by the browser and lets users choose among available devices.
 - Manual barcode entry remains available when camera scanning is unavailable or unreliable.
 - Products, on-hand quantities, inventory activity, and administrator-visible user profiles are loaded from PostgreSQL.
-- The Sales workspace combines product scanning and stock-out recording. A cashier can scan once, enter a whole-unit quantity, build a multi-product sale, and confirm it as one atomic database transaction.
+- The Sales workspace combines product scanning and stock-out recording. Each successful scan immediately adds one unit to the local receipt cart, repeated scans increment the same product line, and quantities remain editable in Current sale. Supabase is updated only when the cashier confirms the complete receipt as one atomic database transaction.
 - Completed sales deduct non-expired inventory using FEFO batch allocation and idempotency protection. A sale is never confirmed from cached-only or offline data.
 - Returns remain linked to their original sale, wait for administrator or manager review, and restore inventory only when approved as resellable. Recent sales are selectable by authorized staff, while exact sale-number lookup remains available for older receipts. Damaged, expired, and rejected returns do not increase available stock.
 - Business days move from open to pending review to verified. Pending returns block verification only for their associated business day.

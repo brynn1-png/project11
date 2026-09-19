@@ -1,10 +1,25 @@
 # Results Log
 
 ## Current State Summary (Updated: 2026-09-19)
-- **Active Task:** None — MVP accepted
-- **Status:** 🟢 Done
-- **Latest Result:** The user accepted the implemented inventory system as the completed MVP and is ready to begin personal changes
-- **Verification:** Latest automated run passed 21 tests, ESLint, TypeScript, production build, diff validation, and interface detector
+- **Active Task:** Task #009 — Direct-to-cart barcode scanning
+- **Status:** 🟡 Awaiting physical scanner acceptance
+- **Latest Result:** The Sales interface now adds or increments products immediately after a valid scan while retaining one receipt-level database confirmation
+- **Verification:** 27 tests, ESLint, TypeScript, production build, and interface detector passed
+
+---
+
+## 2026-09-19 — Task #009: Direct-to-Cart Scanner Result
+**Outcome:** A valid manual, USB-scanner, or camera barcode submission immediately appears in Current sale at quantity one; scanning it again increments that same product line.
+**Interface result:** Removed the intermediate selected-product quantity card, retained cart-side quantity controls, restored barcode-field focus after each attempt, and added concise scan feedback.
+**Data safety result:** No per-item database write was introduced. Confirm sale still submits the complete cart through the existing atomic receipt action, where current inventory is validated again.
+**Camera safety result:** Identical camera frames are ignored for 1.5 seconds so one held barcode does not add many units, while intentional later scans remain possible.
+**Verification results:**
+- `npm run test`: 27 tests passed across 6 files
+- `npm run lint`: passed
+- `npx tsc --noEmit`: passed
+- `npm run build`: passed
+- Impeccable interface detector: no findings
+**Acceptance remaining:** Repeat-scan and focus behavior must be confirmed with the physical YHD-8200L in the target Windows browser.
 
 ---
 

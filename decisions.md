@@ -1,10 +1,18 @@
 # Decision Log
 
 ## Current State Summary (Updated: 2026-09-19)
-- **Active Decision:** MVP scope accepted and closed
+- **Active Decision:** Direct-to-cart hardware scanning after MVP closure
 - **Status:** 🟢 Confirmed
-- **Latest Decision:** The current inventory system is the completed MVP; subsequent requests will be handled as personal changes without silently expanding the MVP scope
-- **Open Questions:** User-selected personal changes, future adjustment approval, hosting, final branding, and physical scanner testing
+- **Latest Decision:** Each successful scan immediately adds one unit to the local current-sale cart, while Supabase remains unchanged until the whole receipt is confirmed atomically
+- **Open Questions:** Live YHD-8200L acceptance, future adjustment approval, hosting, and final branding
+
+---
+
+## 2026-09-19 — Task #009: Direct-to-Cart Sales Flow
+**Decision:** Treat a completed barcode scan as an instruction to add one unit directly to Current sale. A repeated scan increments the same cart line, and manual quantity changes happen only in that cart.
+**Why:** The previous selected-product staging card duplicated controls already present in Current sale and slowed keyboard-emulating scanner use.
+**Transaction boundary:** Scanning and quantity edits are browser-only receipt preparation. Only Confirm sale calls the existing atomic receipt function, which revalidates stock and records the full sale in one database transaction.
+**Safety details:** Keep focus scoped to the barcode field rather than globally capturing keyboard input; reject unknown and unavailable products; prevent quantities above loaded stock; throttle duplicate camera frames while allowing deliberate repeat reads.
 
 ---
 

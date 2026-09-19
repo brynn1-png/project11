@@ -2,16 +2,16 @@
 
 ## Current State Summary (Updated: 2026-09-19)
 - **Open items:** 6
-- **Highest priority:** No open MVP blocker; prioritize the user’s next personal change while retaining external production and hardware work here
+- **Highest priority:** Complete the live YHD-8200L repeated-scan acceptance test for Task #009
 - **Purpose:** Track work that cannot be completed until required hardware, credentials, assets, decisions, or external access become available
 
 ---
 
 ## PND-001 — Physical USB Barcode Scanner Testing
-**Status:** Pending hardware
+**Status:** Ready for testing — YHD-8200L available
 **Added:** 2026-09-15
-**Reason:** A physical USB barcode scanner is not currently available.
-**Prerequisites:** Obtain a keyboard-emulating USB barcode scanner and representative grocery-product barcodes.
+**Reason:** The keyboard-emulating scanner is now available, and Task #009 has implemented the direct-to-cart flow; physical browser acceptance is still required.
+**Prerequisites:** Run the Sales workflow with the YHD-8200L and representative grocery-product barcodes.
 **Acceptance criteria:**
 - The scanner enters EAN-13, EAN-8, UPC-A, UPC-E, Code 128, and Code 39 values correctly when supported by the device.
 - A scan can identify a product without requiring mouse interaction.

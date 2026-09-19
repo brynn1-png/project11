@@ -10,6 +10,7 @@ type CameraDevice = { deviceId: string; label: string };
 export function CameraScanner({ onDetected }: { onDetected: (barcode: string) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
+  const lastDetectionRef = useRef({ code: "", detectedAt: 0 });
   const [devices, setDevices] = useState<CameraDevice[]>([]);
   const [selectedDevice, setSelectedDevice] = useState("");
   const [running, setRunning] = useState(false);
@@ -55,7 +56,10 @@ export function CameraScanner({ onDetected }: { onDetected: (barcode: string) =>
       const controls = await reader.decodeFromVideoDevice(selectedDevice || undefined, videoRef.current!, (result) => {
         if (!result) return;
         const code = result.getText();
-        if (code === lastCode) return;
+        const detectedAt = Date.now();
+        const previous = lastDetectionRef.current;
+        if (code === previous.code && detectedAt - previous.detectedAt < 1500) return;
+        lastDetectionRef.current = { code, detectedAt };
         setLastCode(code);
         onDetected(code);
       });
