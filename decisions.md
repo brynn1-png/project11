@@ -1,10 +1,17 @@
 # Decision Log
 
-## Current State Summary (Updated: 2026-09-17)
-- **Active Decision:** Product registration and stock receiving workflow
-- **Status:** 🟡 Implemented locally; hosted verification pending
-- **Latest Decision:** Generated-barcode mode shows a clearly marked sample label before saving, while only the database-assigned barcode can be printed or used operationally
-- **Open Questions:** Hosted Task #008 acceptance, future adjustment approval, hosting, final branding, and physical scanner testing
+## Current State Summary (Updated: 2026-09-19)
+- **Active Decision:** MVP scope accepted and closed
+- **Status:** 🟢 Confirmed
+- **Latest Decision:** The current inventory system is the completed MVP; subsequent requests will be handled as personal changes without silently expanding the MVP scope
+- **Open Questions:** User-selected personal changes, future adjustment approval, hosting, final branding, and physical scanner testing
+
+---
+
+## 2026-09-19 — Task #008: MVP Scope Closure
+**Decision:** Mark the implemented inventory system as the completed MVP based on explicit user acceptance.
+**Why:** The core single-store workflows are present and the user considers the overall system good enough to move from MVP construction to personal refinements.
+**Boundary:** Hardware testing, production deployment, final branding, and the deferred inventory-correction approval workflow remain backlog items rather than blockers to MVP acceptance.
 
 ---
 

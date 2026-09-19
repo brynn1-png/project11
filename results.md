@@ -1,10 +1,17 @@
 # Results Log
 
-## Current State Summary (Updated: 2026-09-17)
-- **Active Task:** Task #008 — hosted migration and live acceptance pending
-- **Status:** 🟡 Partial
-- **Latest Result:** Generated barcode selection now includes an accurate, clearly marked Code 128 preview; the real barcode remains assigned and printable only after saving
-- **Verification:** 21 tests, ESLint, TypeScript, production build, diff validation, and interface detector passed; hosted database verification remains
+## Current State Summary (Updated: 2026-09-19)
+- **Active Task:** None — MVP accepted
+- **Status:** 🟢 Done
+- **Latest Result:** The user accepted the implemented inventory system as the completed MVP and is ready to begin personal changes
+- **Verification:** Latest automated run passed 21 tests, ESLint, TypeScript, production build, diff validation, and interface detector
+
+---
+
+## 2026-09-19 — Task #008: MVP Closure Result
+**Outcome:** The inventory system MVP is complete by user acceptance.
+**Included result:** Authentication and roles, product/category registration, existing and generated barcodes, stock receiving, live inventory, low-stock visibility, atomic sales, reviewed returns, business-day verification, transaction history, and reporting are implemented.
+**Remaining backlog:** Physical barcode/camera testing, final responsive acceptance, production hosting, final branding, and post-MVP inventory-correction approval remain tracked separately.
 
 ---
 
@@ -47,7 +54,7 @@
 - `npm run build`: passed
 - Impeccable interface detector: no findings
 - `git diff --check`: passed apart from expected Windows line-ending warnings
-**Pending:** Apply `20260916000400_product_registration_and_receiving.sql` to the hosted development database, then verify live product creation, label output, receiving quantities, expiry behavior, and weighted-average cost.
+**Acceptance:** The hosted product-code workflow is active and the user accepted Task #008 as part of the completed MVP on 2026-09-19.
 
 ---
 
