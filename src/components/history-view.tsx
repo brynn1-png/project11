@@ -6,6 +6,7 @@ import { loadTransactionHistory, type ReceiptHistoryEntry, type ReturnHistoryEnt
 import { useInventory } from "@/components/inventory-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SaleReceiptDetails, SaleReceiptPrintSheet } from "@/components/sale-receipt";
 import { cn } from "@/lib/utils";
 
 type HistoryTab = "activity" | "receipts" | "returns";
@@ -39,11 +40,6 @@ export function HistoryView() {
   const shownReceipts = useMemo(() => receipts.filter((item) => !query || [`sale ${item.saleNumber}`, item.saleNumber, item.cashierName, ...item.items.map((line) => line.productName)].some((value) => value.toLowerCase().includes(query))), [query, receipts]);
   const shownReturns = useMemo(() => returns.filter((item) => !query || [`return ${item.returnNumber}`, item.returnNumber, item.saleNumber, item.requestedBy, item.reason, ...item.items.map((line) => line.productName)].some((value) => value.toLowerCase().includes(query))), [query, returns]);
 
-  function printReceipt(receipt: ReceiptHistoryEntry) {
-    setSelectedReceipt(receipt);
-    window.setTimeout(() => window.print(), 0);
-  }
-
   return <div className="grid gap-5">
     <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="Transaction history">
@@ -54,9 +50,10 @@ export function HistoryView() {
 
     {error && tab !== "activity" && <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-900">{error}</div>}
     {tab === "activity" && <ActivityHistory items={shownActivity} />}
-    {tab === "receipts" && <ReceiptHistory items={shownReceipts} loading={loading} onPrint={printReceipt} />}
+    {tab === "receipts" && selectedReceipt && <section className="panel p-5 sm:p-6"><SaleReceiptDetails receipt={selectedReceipt} /><div className="mt-6 flex flex-col-reverse gap-2 border-t border-[var(--border)] pt-5 sm:flex-row sm:justify-end"><Button variant="secondary" onClick={() => setSelectedReceipt(null)}>Close receipt</Button><Button onClick={() => window.print()}><Printer size={16} />Print / Save as PDF</Button></div></section>}
+    {tab === "receipts" && <ReceiptHistory items={shownReceipts} loading={loading} onSelect={setSelectedReceipt} />}
     {tab === "returns" && <ReturnHistory items={shownReturns} loading={loading} />}
-    {selectedReceipt && <ReceiptPrintSheet receipt={selectedReceipt} />}
+    {selectedReceipt && <SaleReceiptPrintSheet receipt={selectedReceipt} />}
   </div>;
 }
 
@@ -65,10 +62,10 @@ function ActivityHistory({ items }: { items: ReturnType<typeof useInventory>["tr
   return <div className="panel overflow-hidden"><div className="overflow-x-auto"><table className="data-table min-w-[900px]"><thead><tr><th>Transaction</th><th>Product</th><th>Type</th><th>Quantity</th><th>Stock change</th><th>User</th><th>Date</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td className="max-w-36 truncate font-mono text-xs text-[var(--muted-foreground)]" title={item.id}>{item.id}</td><td><p className="font-semibold">{item.productName}</p><p className="text-xs text-[var(--muted-foreground)]">{item.notes || "No notes"}</p></td><td><span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold", item.type === "Stock In" ? "bg-emerald-50 text-emerald-800" : "bg-orange-50 text-orange-800")}>{item.type === "Stock In" ? <ArrowDown size={13} /> : <ArrowUp size={13} />}{item.type}</span></td><td className="font-bold">{item.quantity}</td><td>{item.previousStock === null || item.newStock === null ? <span className="text-[var(--muted-foreground)]">Recorded</span> : <><span className="text-[var(--muted-foreground)]">{item.previousStock}</span> <span aria-hidden="true">→</span> <strong>{item.newStock}</strong></>}</td><td>{item.user}</td><td className="text-[var(--muted-foreground)]">{date(item.createdAt)}</td></tr>)}</tbody></table></div></div>;
 }
 
-function ReceiptHistory({ items, loading, onPrint }: { items: ReceiptHistoryEntry[]; loading: boolean; onPrint: (receipt: ReceiptHistoryEntry) => void }) {
+function ReceiptHistory({ items, loading, onSelect }: { items: ReceiptHistoryEntry[]; loading: boolean; onSelect: (receipt: ReceiptHistoryEntry) => void }) {
   if (loading) return <HistoryLoading />;
   if (items.length === 0) return <HistoryEmpty icon="receipt" title="No matching receipts" text="Confirmed sales receipts will remain available here." />;
-  return <div className="panel overflow-hidden"><div className="overflow-x-auto"><table className="data-table min-w-[900px]"><thead><tr><th>Receipt</th><th>Cashier</th><th>Items</th><th>Returns</th><th>Total</th><th>Date</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{items.map((receipt) => <tr key={receipt.saleNumber}><td><p className="font-semibold">Sale #{receipt.saleNumber}</p><p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{statusLabel(receipt.status)}</p></td><td>{receipt.cashierName}</td><td><p className="font-semibold">{receipt.itemCount}</p><p className="mt-0.5 max-w-64 truncate text-xs text-[var(--muted-foreground)]" title={receipt.items.map((item) => item.productName).join(", ")}>{receipt.items.map((item) => `${item.quantity}× ${item.productName}`).join(", ")}</p></td><td>{receipt.returnedQuantity > 0 ? `${receipt.returnedQuantity} returned` : "None"}</td><td className="font-bold">{peso(receipt.totalAmount)}</td><td className="text-[var(--muted-foreground)]">{date(receipt.soldAt)}</td><td><Button size="sm" variant="ghost" onClick={() => onPrint(receipt)}><Printer size={16} />View / print</Button></td></tr>)}</tbody></table></div></div>;
+  return <div className="panel overflow-hidden"><div className="overflow-x-auto"><table className="data-table min-w-[960px]"><thead><tr><th>Receipt</th><th>Cashier</th><th>Items</th><th>Returns</th><th>Payment</th><th>Date</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{items.map((receipt) => <tr key={receipt.saleNumber}><td><p className="font-semibold">Sale #{receipt.saleNumber}</p><p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{statusLabel(receipt.status)}</p></td><td>{receipt.cashierName}</td><td><p className="font-semibold">{receipt.itemCount}</p><p className="mt-0.5 max-w-64 truncate text-xs text-[var(--muted-foreground)]" title={receipt.items.map((item) => item.productName).join(", ")}>{receipt.items.map((item) => `${item.quantity}× ${item.productName}`).join(", ")}</p></td><td>{receipt.returnedQuantity > 0 ? `${receipt.returnedQuantity} returned` : "None"}</td><td><p className="font-bold">{peso(receipt.totalAmount)}</p>{receipt.cashReceived !== undefined ? <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">Cash {peso(receipt.cashReceived)} · Change {peso(receipt.changeDue ?? 0)}</p> : <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">Not recorded</p>}</td><td className="text-[var(--muted-foreground)]">{date(receipt.soldAt)}</td><td><Button size="sm" variant="ghost" onClick={() => onSelect(receipt)}>View receipt</Button></td></tr>)}</tbody></table></div></div>;
 }
 
 function ReturnHistory({ items, loading }: { items: ReturnHistoryEntry[]; loading: boolean }) {
@@ -79,7 +76,3 @@ function ReturnHistory({ items, loading }: { items: ReturnHistoryEntry[]; loadin
 
 function HistoryLoading() { return <div className="panel grid min-h-48 place-items-center text-sm text-[var(--muted-foreground)]">Loading history…</div>; }
 function HistoryEmpty({ icon, title, text }: { icon: "activity" | "receipt" | "return"; title: string; text: string }) { const Icon = icon === "receipt" ? Receipt : icon === "return" ? ArrowCounterClockwise : Package; return <div className="panel grid place-items-center px-5 py-14 text-center"><span className="grid size-12 place-items-center rounded-2xl bg-[var(--muted)] text-[var(--muted-foreground)]"><Icon size={23} /></span><h3 className="mt-4 font-bold">{title}</h3><p className="mt-1 max-w-sm text-sm text-[var(--muted-foreground)]">{text}</p></div>; }
-
-function ReceiptPrintSheet({ receipt }: { receipt: ReceiptHistoryEntry }) {
-  return <section className="receipt-print-sheet" aria-label={`Sale ${receipt.saleNumber} receipt`}><div className="text-center"><h1>South Emerald Supermarket</h1><p>Sale #{receipt.saleNumber}</p><p>{date(receipt.soldAt)} · {receipt.cashierName}</p></div><div className="receipt-print-lines">{receipt.items.map((item) => <div key={`${receipt.saleNumber}-${item.barcode}`}><span>{item.quantity} × {item.productName}</span><strong>{peso(item.lineTotal)}</strong><small>{peso(item.unitPrice)} each</small></div>)}</div><div className="receipt-print-total"><span>Total</span><strong>{peso(receipt.totalAmount)}</strong></div>{receipt.returnedQuantity > 0 && <p>{receipt.returnedQuantity} item{receipt.returnedQuantity === 1 ? "" : "s"} returned</p>}{receipt.notes && <p>Note: {receipt.notes}</p>}</section>;
-}

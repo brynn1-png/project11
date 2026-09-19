@@ -1,11 +1,31 @@
 # Progress Log
 
 ## Current State Summary (Updated: 2026-09-19)
-- **Active Task:** Task #017 — Product archive and transaction history
+- **Active Task:** Task #018 — Cash checkout and complete receipts
 - **Status:** 🟡 Implemented locally; database migrations and live acceptance pending
-- **Next Action:** Apply the two `20260919` migrations to Supabase in filename order, then test archive/restore and history
-- **Blockers:** The hosted database does not yet expose the Task #015 and Task #017 functions
+- **Next Action:** Apply all three `20260919` migrations to Supabase in filename order, then test checkout, receipt printing, archive, and history
+- **Blockers:** The hosted database does not yet expose the Task #015, #017, and #018 functions
 - **Last Completed:** Task #016 on 2026-09-19
+
+---
+
+## 2026-09-19 — Task #018: Cash Checkout and Complete Receipts
+**Status:** 🟡 Implementation complete; hosted migration pending
+**Summary:** Added cash tendering, authoritative change calculation, post-sale receipt issuance, and payment-aware receipt history.
+**Steps completed:**
+- [x] Require Cash received before completing a sale
+- [x] Show the remaining amount or calculated change before confirmation
+- [x] Validate payment against the database-calculated sale total
+- [x] Store cash received and change with each new sale
+- [x] Return authoritative receipt lines, totals, cashier, and payment details from the sale transaction
+- [x] Pause scanner capture on the completed receipt screen
+- [x] Add Print / Save as PDF and Start next sale actions
+- [x] Add full receipt viewing and reprinting from Sales receipts history
+- [x] Preserve honest Payment details unavailable messaging for older receipts
+- [x] Pass 44 tests, ESLint, TypeScript, production build, diff validation, and interface detector
+- [ ] Apply `20260919000300_cash_payment_receipts.sql` to hosted Supabase
+- [ ] Complete live cash, change, receipt, reprint, and scanner-pause acceptance tests
+**Notes:** Refund payment tracking remains a separate future task; returns continue recording inventory disposition only.
 
 ---
 

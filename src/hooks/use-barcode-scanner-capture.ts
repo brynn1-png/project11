@@ -16,7 +16,7 @@ function isEditableTarget(target: EventTarget | null) {
     || target instanceof HTMLSelectElement;
 }
 
-export function useBarcodeScannerCapture(onScan: (barcode: string) => void) {
+export function useBarcodeScannerCapture(onScan: (barcode: string) => void, enabled = true) {
   const onScanRef = useRef(onScan);
 
   useEffect(() => {
@@ -24,6 +24,7 @@ export function useBarcodeScannerCapture(onScan: (barcode: string) => void) {
   }, [onScan]);
 
   useEffect(() => {
+    if (!enabled) return;
     let state: ScannerCaptureState = EMPTY_SCANNER_CAPTURE;
     let resetTimer: number | undefined;
 
@@ -60,5 +61,5 @@ export function useBarcodeScannerCapture(onScan: (barcode: string) => void) {
       window.clearTimeout(resetTimer);
       window.removeEventListener("keydown", handleKeyDown, true);
     };
-  }, []);
+  }, [enabled]);
 }

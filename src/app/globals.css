@@ -154,6 +154,8 @@ button { -webkit-tap-highlight-color: transparent; }
   .receipt-print-lines div { display: grid; grid-template-columns: 1fr auto; gap: 1mm 3mm; margin-block: 2mm; }
   .receipt-print-lines small { grid-column: 1 / -1; color: #555; }
   .receipt-print-total { display: flex; justify-content: space-between; font-size: 12pt; }
+  .receipt-print-payment { display: flex; justify-content: space-between; margin-top: 1.5mm; }
+  .receipt-print-thanks { margin-top: 6mm; text-align: center; }
 }
 
 .barcode-print-sheet { display: none; }

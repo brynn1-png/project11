@@ -4,6 +4,7 @@ import { recordSaleSchema } from "@/lib/validation/sales";
 const validSale = {
   idempotencyKey: "10000000-0000-4000-8000-000000000001",
   items: [{ productId: "20000000-0000-4000-8000-000000000001", quantity: 2 }],
+  cashReceived: 100,
 };
 
 describe("recordSaleSchema", () => {
@@ -18,5 +19,10 @@ describe("recordSaleSchema", () => {
   it("rejects fractional and negative quantities", () => {
     expect(recordSaleSchema.safeParse({ ...validSale, items: [{ ...validSale.items[0], quantity: 1.5 }] }).success).toBe(false);
     expect(recordSaleSchema.safeParse({ ...validSale, items: [{ ...validSale.items[0], quantity: -1 }] }).success).toBe(false);
+  });
+
+  it("rejects invalid cash received", () => {
+    expect(recordSaleSchema.safeParse({ ...validSale, cashReceived: 0 }).success).toBe(false);
+    expect(recordSaleSchema.safeParse({ ...validSale, cashReceived: 10.999 }).success).toBe(false);
   });
 });

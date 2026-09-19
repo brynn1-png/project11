@@ -6,8 +6,26 @@ import { createClient } from "@/lib/supabase/server";
 import { recordSaleSchema, type RecordSaleInput } from "@/lib/validation/sales";
 import { z } from "zod";
 
+export type ConfirmedSaleReceipt = {
+  saleNumber: string;
+  totalAmount: number;
+  paymentMethod: "cash";
+  cashReceived: number;
+  changeDue: number;
+  soldAt: string;
+  cashierName: string;
+  notes?: string;
+  items: Array<{ productName: string; barcode: string; quantity: number; unitPrice: number; lineTotal: number }>;
+};
+
+type RecordedSaleRow = {
+  sale_number: number | string; total_amount: number | string; payment_method: "cash";
+  cash_received: number | string; change_due: number | string; sold_at: string; cashier_name: string;
+  notes: string | null; items: Array<{ product_name: string; barcode: string; quantity: number | string; unit_price: number | string; line_total: number | string }>;
+};
+
 export type RecordSaleResult =
-  | { ok: true; saleNumber: string; totalAmount: number }
+  | { ok: true; receipt: ConfirmedSaleReceipt }
   | { ok: false; message: string };
 
 export async function recordSale(input: RecordSaleInput): Promise<RecordSaleResult> {
@@ -26,19 +44,30 @@ export async function recordSale(input: RecordSaleInput): Promise<RecordSaleResu
     p_idempotency_key: parsed.data.idempotencyKey,
     p_items: parsed.data.items.map((item) => ({ product_id: item.productId, quantity: item.quantity })),
     p_notes: parsed.data.notes || null,
+    p_cash_received: parsed.data.cashReceived,
   });
 
   if (error) {
     console.error("Sale confirmation failed", error);
+    if (error.message.includes("p_cash_received") || error.message.includes("schema cache")) return { ok: false, message: "Apply the latest database migration before recording cash payments." };
     if (error.message.includes("Insufficient sellable stock")) return { ok: false, message: error.message };
+    if (error.message.includes("Cash received")) return { ok: false, message: error.message };
     if (error.message.includes("business day is not open")) return { ok: false, message: "Today’s sales have already been submitted for review." };
     return { ok: false, message: "The sale could not be confirmed. Inventory was not changed. Refresh and try again." };
   }
 
-  const row = Array.isArray(data) ? data[0] : data;
+  const row = (Array.isArray(data) ? data[0] : data) as RecordedSaleRow | null;
   if (!row) return { ok: false, message: "The database did not return a sale confirmation." };
 
-  return { ok: true, saleNumber: String(row.sale_number), totalAmount: Number(row.total_amount) };
+  return {
+    ok: true,
+    receipt: {
+      saleNumber: String(row.sale_number), totalAmount: Number(row.total_amount), paymentMethod: row.payment_method,
+      cashReceived: Number(row.cash_received), changeDue: Number(row.change_due), soldAt: row.sold_at,
+      cashierName: row.cashier_name, notes: row.notes ?? undefined,
+      items: row.items.map((item) => ({ productName: item.product_name, barcode: item.barcode, quantity: Number(item.quantity), unitPrice: Number(item.unit_price), lineTotal: Number(item.line_total) })),
+    },
+  };
 }
 
 export type ReturnableSaleItem = {

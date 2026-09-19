@@ -86,11 +86,11 @@
 
 ---
 
-## PND-007 — Latest Product, Archive, and History Migrations
+## PND-007 — Latest Product, Archive, History, and Receipt Migrations
 **Status:** Pending hosted database application and acceptance tests
 **Added:** 2026-09-19
-**Reason:** Tasks #015 and #017 require new atomic registration, archive, restoration, receipt-history, and return-history functions in the hosted Supabase project.
-**Prerequisites:** Apply `supabase/migrations/20260919000100_product_initial_stock.sql` and then `supabase/migrations/20260919000200_archive_and_history.sql` through the Supabase SQL editor or migration workflow.
+**Reason:** Tasks #015, #017, and #018 require new atomic registration, archive, restoration, history, cash-payment, and receipt functions in the hosted Supabase project.
+**Prerequisites:** Apply `supabase/migrations/20260919000100_product_initial_stock.sql`, `supabase/migrations/20260919000200_archive_and_history.sql`, and `supabase/migrations/20260919000300_cash_payment_receipts.sql` in filename order through the Supabase SQL editor or migration workflow.
 **Acceptance criteria:**
 - A non-expiring product can be registered with quantity and purchase price in one submission.
 - An expiry-tracked product requires an expiry date and creates an expiring batch.
@@ -100,3 +100,7 @@
 - A product with stock or a pending resellable return cannot be archived.
 - Receipt and return history follows role visibility and displays complete line details.
 - Receipt printing produces a readable 80 mm record.
+- A sale cannot complete until cash received covers the authoritative total.
+- The completed and historical receipt show total, cash received, and change.
+- Print and browser Save as PDF output include all purchased product lines and payment details.
+- Barcode capture remains paused until the cashier starts the next sale.

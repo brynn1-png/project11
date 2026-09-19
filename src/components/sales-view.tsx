@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Barcode, Camera, CheckCircle, Minus, Plus, ShoppingCart, Trash, WarningCircle, WifiHigh, WifiSlash } from "@phosphor-icons/react";
-import { recordSale } from "@/app/sales/actions";
+import { Barcode, Camera, CheckCircle, Minus, Plus, Printer, ShoppingCart, Trash, WarningCircle, WifiHigh, WifiSlash } from "@phosphor-icons/react";
+import { recordSale, type ConfirmedSaleReceipt } from "@/app/sales/actions";
 import { CameraScanner } from "@/components/camera-scanner";
 import { useInventory } from "@/components/inventory-provider";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { SaleReceiptDetails, SaleReceiptPrintSheet } from "@/components/sale-receipt";
 import { useBarcodeScannerCapture } from "@/hooks/use-barcode-scanner-capture";
 import { addProductToCart, updateCartQuantity, type CartLine } from "@/lib/sales-cart";
 
@@ -28,9 +29,10 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
   const [barcode, setBarcode] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [notes, setNotes] = useState("");
+  const [cashReceived, setCashReceived] = useState("");
   const [message, setMessage] = useState("");
   const [scanStatus, setScanStatus] = useState("");
-  const [lastSale, setLastSale] = useState<{ number: string; total: number } | null>(null);
+  const [lastSale, setLastSale] = useState<ConfirmedSaleReceipt | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [online, setOnline] = useState(true);
   const [saleKey, setSaleKey] = useState(() => crypto.randomUUID());
@@ -49,6 +51,9 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
 
   const total = useMemo(() => cart.reduce((sum, line) => sum + line.product.price * line.quantity, 0), [cart]);
   const itemCount = useMemo(() => cart.reduce((sum, line) => sum + line.quantity, 0), [cart]);
+  const cashValue = cashReceived === "" ? 0 : Number(cashReceived);
+  const paymentReady = Number.isFinite(cashValue) && cashValue >= total && total > 0;
+  const changeDue = paymentReady ? Math.round((cashValue - total) * 100) / 100 : 0;
 
   function commitCart(next: CartLine[]) {
     cartRef.current = next;
@@ -91,7 +96,7 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
     focusBarcode();
   }
 
-  useBarcodeScannerCapture(addBarcodeToCart);
+  useBarcodeScannerCapture(addBarcodeToCart, !lastSale);
 
   function changeQuantity(productId: string, next: number) {
     const result = updateCartQuantity(cartRef.current, productId, next);
@@ -104,6 +109,7 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
   function confirmSale() {
     if (!online || dataSource !== "live") return setMessage("Refresh live inventory before confirming this sale.");
     if (cart.length === 0) return setMessage("Add at least one product before confirming the sale.");
+    if (!paymentReady) return setMessage("Cash received must cover the complete sale total.");
     setMessage("");
     setLastSale(null);
     startTransition(async () => {
@@ -111,18 +117,25 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
         idempotencyKey: saleKey,
         items: cart.map((line) => ({ productId: line.product.databaseId, quantity: line.quantity })),
         notes,
+        cashReceived: cashValue,
       });
       if (!result.ok) return setMessage(result.message);
-      setLastSale({ number: result.saleNumber, total: result.totalAmount });
+      setLastSale(result.receipt);
       cartRef.current = [];
       setCart([]);
       setNotes("");
       setSaleKey(crypto.randomUUID());
-      notify(`Sale #${result.saleNumber} confirmed for ${peso(result.totalAmount)}.`);
+      notify(`Sale #${result.receipt.saleNumber} confirmed for ${peso(result.receipt.totalAmount)}.`);
       router.refresh();
-      window.setTimeout(() => barcodeRef.current?.focus(), 0);
     });
   }
+
+  function startNextSale() {
+    setLastSale(null); setCashReceived(""); setMessage(""); setScanStatus("");
+    setSaleKey(crypto.randomUUID()); focusBarcode();
+  }
+
+  if (lastSale) return <div className="mx-auto grid max-w-2xl gap-5"><section className="panel p-5 sm:p-6"><div className="mb-5 flex items-start gap-3 rounded-xl bg-emerald-50 p-4 text-emerald-900"><CheckCircle className="mt-0.5 shrink-0" size={22} weight="fill" /><div><h2 className="font-bold">Sale confirmed</h2><p className="mt-1 text-sm">Give the customer {peso(lastSale.changeDue)} change, then print or save their receipt.</p></div></div><SaleReceiptDetails receipt={lastSale} /><div className="mt-6 flex flex-col-reverse gap-2 border-t border-[var(--border)] pt-5 sm:flex-row sm:justify-end"><Button variant="secondary" onClick={startNextSale}>Start next sale</Button><Button onClick={() => window.print()}><Printer size={17} />Print / Save as PDF</Button></div></section><SaleReceiptPrintSheet receipt={lastSale} /></div>;
 
   return (
     <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
@@ -157,7 +170,6 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
 
             {message && <Alert variant="destructive"><WarningCircle /><AlertTitle>Sale needs attention</AlertTitle><AlertDescription>{message}</AlertDescription></Alert>}
 
-            {lastSale && <Alert><CheckCircle /><AlertTitle>Sale #{lastSale.number} confirmed</AlertTitle><AlertDescription>{peso(lastSale.total)} was recorded. Use sale number {lastSale.number} if any item is returned.</AlertDescription></Alert>}
             {!message && <div className="flex min-h-6 items-center gap-2 text-sm" role="status" aria-live="polite">{scanStatus ? <><CheckCircle className="shrink-0 text-[var(--accent)]" size={18} weight="fill" /><span className="font-medium">{scanStatus}</span></> : <><Barcode className="shrink-0 text-[var(--muted-foreground)]" size={18} /><span className="text-[var(--muted-foreground)]">Ready for the next barcode.</span></>}</div>}
           </CardContent>
         </Card>
@@ -188,8 +200,9 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
         <Separator />
         <CardFooter className="flex-col items-stretch gap-4 pt-6">
           <div className="flex items-end justify-between"><span className="text-sm text-[var(--muted-foreground)]">Total</span><strong className="text-2xl tracking-[-0.03em]">{peso(total)}</strong></div>
-          <Button size="lg" onClick={confirmSale} disabled={cart.length === 0 || isPending || !online || dataSource !== "live"}>
-            <CheckCircle data-icon="inline-start" weight="bold" />{isPending ? "Confirming sale…" : "Confirm sale"}
+          <div className="grid gap-3 border-t border-[var(--border)] pt-4"><div className="flex items-end gap-2"><Field className="flex-1"><FieldLabel htmlFor="cash-received">Cash received</FieldLabel><Input id="cash-received" type="number" min="0.01" max="100000000" step="0.01" inputMode="decimal" value={cashReceived} onChange={(event) => { setCashReceived(event.target.value); setMessage(""); }} placeholder="0.00" /></Field><Button type="button" variant="secondary" onClick={() => setCashReceived(total.toFixed(2))} disabled={cart.length === 0}>Exact</Button></div><div className="flex justify-between text-sm"><span className="text-[var(--muted-foreground)]">Change</span><strong className={paymentReady ? "text-[var(--accent-strong)]" : ""}>{peso(changeDue)}</strong></div>{cashReceived !== "" && !paymentReady && <p className="text-xs font-medium text-red-700">Cash received is {peso(Math.max(0, total - (Number.isFinite(cashValue) ? cashValue : 0)))} short.</p>}</div>
+          <Button size="lg" onClick={confirmSale} disabled={cart.length === 0 || !paymentReady || isPending || !online || dataSource !== "live"}>
+            <CheckCircle data-icon="inline-start" weight="bold" />{isPending ? "Completing sale…" : "Complete sale"}
           </Button>
           {(!online || dataSource !== "live") && <p className="text-center text-xs text-[var(--muted-foreground)]">Product lookup remains available, but sale confirmation requires current live inventory.</p>}
         </CardFooter>

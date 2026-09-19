@@ -1,10 +1,20 @@
 # Decision Log
 
 ## Current State Summary (Updated: 2026-09-19)
-- **Active Decision:** Archive recoverable product records; keep receipts and returns as immutable history
+- **Active Decision:** Cash payment and change are part of the atomic sale and permanent receipt
 - **Status:** 🟢 Confirmed
-- **Latest Decision:** Place Archived products under Products and receipt/return history under Transactions rather than Settings
+- **Latest Decision:** Issue a printable or Save-as-PDF receipt after every sale and allow later lookup and reprinting
 - **Open Questions:** Future adjustment approval and hosting
+
+---
+
+## 2026-09-19 — Task #018: Cash Checkout and Receipt Issuance
+**Decision:** Record cash received and database-calculated change as part of the same atomic transaction that confirms the sale and deducts inventory.
+**Why:** Browser-only change calculation could differ from the authoritative total or disappear from history. Payment data must be reproducible on the original and reprinted receipt.
+**Checkout behavior:** The cashier enters Cash received, sees either the short amount or change, and cannot complete the sale until cash covers the total. Exact fills the current total.
+**Receipt behavior:** After confirmation, scanning pauses on a completed receipt screen. The cashier may Print / Save as PDF or start the next sale. Receipt History opens and reprints the same stored payment and line details.
+**Historical compatibility:** Earlier receipts keep nullable payment fields and are labeled as not having recorded payment details rather than inventing values.
+**Boundary:** The first payment method is cash. Return approvals still change inventory only; recording customer refunds is deferred to a separate task.
 
 ---
 

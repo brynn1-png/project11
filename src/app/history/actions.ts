@@ -19,6 +19,9 @@ export type ReceiptHistoryEntry = {
   status: "completed" | "voided";
   itemCount: number;
   returnedQuantity: number;
+  paymentMethod?: "cash";
+  cashReceived?: number;
+  changeDue?: number;
   notes?: string;
   items: ReceiptHistoryItem[];
 };
@@ -40,6 +43,7 @@ export type ReturnHistoryEntry = {
 type ReceiptRow = {
   sale_number: number | string; sold_at: string; cashier_name: string; total_amount: number | string;
   status: ReceiptHistoryEntry["status"]; item_count: number | string; returned_quantity: number | string;
+  payment_method: "cash" | null; cash_received: number | string | null; change_due: number | string | null;
   notes: string | null; items: Array<{ product_name: string; barcode: string; quantity: number | string; unit_price: number | string; line_total: number | string }>;
 };
 
@@ -68,7 +72,9 @@ export async function loadTransactionHistory(): Promise<{ receipts: ReceiptHisto
     receipts: ((receiptResult.data ?? []) as ReceiptRow[]).map((row) => ({
       saleNumber: String(row.sale_number), soldAt: row.sold_at, cashierName: row.cashier_name,
       totalAmount: Number(row.total_amount), status: row.status, itemCount: Number(row.item_count),
-      returnedQuantity: Number(row.returned_quantity), notes: row.notes ?? undefined,
+      returnedQuantity: Number(row.returned_quantity), paymentMethod: row.payment_method ?? undefined,
+      cashReceived: row.cash_received == null ? undefined : Number(row.cash_received),
+      changeDue: row.change_due == null ? undefined : Number(row.change_due), notes: row.notes ?? undefined,
       items: row.items.map((item) => ({ productName: item.product_name, barcode: item.barcode, quantity: Number(item.quantity), unitPrice: Number(item.unit_price), lineTotal: Number(item.line_total) })),
     })),
     returns: ((returnResult.data ?? []) as ReturnRow[]).map((row) => ({

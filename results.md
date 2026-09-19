@@ -1,10 +1,29 @@
 # Results Log
 
 ## Current State Summary (Updated: 2026-09-19)
-- **Active Task:** Task #017 — Product archive and transaction history
+- **Active Task:** Task #018 — Cash checkout and complete receipts
 - **Status:** 🟡 Local implementation verified; hosted migrations pending
-- **Latest Result:** Products now have a recoverable archive, while receipts and returns have permanent searchable history
-- **Verification:** 43 tests, ESLint, TypeScript, production build, and Impeccable interface detector passed
+- **Latest Result:** Every new sale can record cash received, calculate change, and issue a complete printable or digital receipt
+- **Verification:** 44 tests, ESLint, TypeScript, production build, and Impeccable interface detector passed
+
+---
+
+## 2026-09-19 — Task #018: Cash Checkout and Receipt Result
+**Outcome:** Current sale now collects Cash received, shows the amount short or Change, and enables completion only when payment covers the cart total.
+**Database result:** The cash-payment wrapper calls the existing atomic sale function, validates payment against its authoritative total, stores cash and change, and returns authoritative receipt lines in the same transaction. Idempotent retries return the original stored payment.
+**Receipt result:** A confirmed sale opens a complete South Emerald receipt, pauses barcode capture, and offers Print / Save as PDF or Start next sale. Receipt History now opens the full receipt and supports reprinting.
+**Compatibility result:** Sales created before Task #018 remain available and clearly show that payment details were not recorded.
+**Files added:**
+- `src/components/sale-receipt.tsx`
+- `supabase/migrations/20260919000300_cash_payment_receipts.sql`
+**Verification results:**
+- `npm run test`: 44 tests passed across 10 files
+- `npm run lint`: passed
+- `npx tsc --noEmit`: passed
+- `npm run build`: passed
+- Impeccable interface detector: no findings
+- `git diff --check`: passed apart from expected Windows line-ending warnings
+**Pending verification:** Apply the migration to hosted Supabase and complete live checkout, payment, change, printing, digital PDF, scanner-pause, and receipt-history tests.
 
 ---
 
