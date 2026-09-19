@@ -23,6 +23,12 @@ export type ReceiptHistoryEntry = {
   cashReceived?: number;
   changeDue?: number;
   notes?: string;
+  businessDate?: string;
+  businessDayStatus?: "open" | "pending_review" | "verified";
+  submittedBy?: string;
+  submittedAt?: string;
+  verifiedBy?: string;
+  verifiedAt?: string;
   items: ReceiptHistoryItem[];
 };
 
@@ -44,7 +50,11 @@ type ReceiptRow = {
   sale_number: number | string; sold_at: string; cashier_name: string; total_amount: number | string;
   status: ReceiptHistoryEntry["status"]; item_count: number | string; returned_quantity: number | string;
   payment_method: "cash" | null; cash_received: number | string | null; change_due: number | string | null;
-  notes: string | null; items: Array<{ product_name: string; barcode: string; quantity: number | string; unit_price: number | string; line_total: number | string }>;
+  notes: string | null; business_date: string | null;
+  business_day_status: ReceiptHistoryEntry["businessDayStatus"] | null;
+  submitted_by_name: string | null; submitted_at: string | null;
+  verified_by_name: string | null; verified_at: string | null;
+  items: Array<{ product_name: string; barcode: string; quantity: number | string; unit_price: number | string; line_total: number | string }>;
 };
 
 type ReturnRow = {
@@ -75,6 +85,9 @@ export async function loadTransactionHistory(): Promise<{ receipts: ReceiptHisto
       returnedQuantity: Number(row.returned_quantity), paymentMethod: row.payment_method ?? undefined,
       cashReceived: row.cash_received == null ? undefined : Number(row.cash_received),
       changeDue: row.change_due == null ? undefined : Number(row.change_due), notes: row.notes ?? undefined,
+      businessDate: row.business_date ?? undefined, businessDayStatus: row.business_day_status ?? undefined,
+      submittedBy: row.submitted_by_name ?? undefined, submittedAt: row.submitted_at ?? undefined,
+      verifiedBy: row.verified_by_name ?? undefined, verifiedAt: row.verified_at ?? undefined,
       items: row.items.map((item) => ({ productName: item.product_name, barcode: item.barcode, quantity: Number(item.quantity), unitPrice: Number(item.unit_price), lineTotal: Number(item.line_total) })),
     })),
     returns: ((returnResult.data ?? []) as ReturnRow[]).map((row) => ({

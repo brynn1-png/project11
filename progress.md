@@ -1,16 +1,76 @@
 # Progress Log
 
 ## Current State Summary (Updated: 2026-09-19)
-- **Active Task:** Task #018 — Cash checkout and complete receipts
-- **Status:** 🟡 Implemented locally; database migrations and live acceptance pending
-- **Next Action:** Apply all three `20260919` migrations to Supabase in filename order, then test checkout, receipt printing, archive, and history
-- **Blockers:** The hosted database does not yet expose the Task #015, #017, and #018 functions
-- **Last Completed:** Task #016 on 2026-09-19
+- **Active Task:** Task #022 — Return-entry modal
+- **Status:** 🟢 Implemented and locally verified
+- **Next Action:** Confirm selecting, cancelling, submitting, and scrolling the return modal in the user's running application
+- **Blockers:** No controllable browser session was available for automated screenshots
+- **Last Completed:** Task #022 Return-entry modal on 2026-09-19
+
+---
+
+## 2026-09-19 — Task #022: Return-Entry Modal
+**Status:** 🟢 Done
+**Summary:** Replaced the lower-page returned-item form with a focused modal opened from either sale-selection path.
+**Steps completed:**
+- [x] Open the return workflow after selecting a recent sale
+- [x] Open the same workflow after direct sale-number lookup
+- [x] Keep item quantities, condition, reason, notes, and submission inside the modal
+- [x] Keep submission errors visible inside the modal
+- [x] Add internal scrolling for receipts with many products
+- [x] Support Cancel, close button, outside click, and Escape through the accessible dialog primitive
+- [x] Prevent dismissing the controlled modal while submission is pending
+- [x] Pass TypeScript, ESLint, 44 tests, production build, and the layout detector
+**Notes:** Return processing and database behavior were not changed. Live interaction confirmation remains manual because no controllable browser session was available.
+
+---
+
+## 2026-09-19 — Task #021: Returns Workspace Layout
+**Status:** 🟢 Done
+**Summary:** Removed the redundant Returns page width cap and reorganized its desktop workflow to use the shared workspace.
+**Steps completed:**
+- [x] Remove the nested `max-w-5xl` page constraint
+- [x] Place recent sales and original-sale lookup side by side on wide screens
+- [x] Keep error feedback and the selected-return form full width
+- [x] Preserve the single-column layout below the wide-screen breakpoint
+- [x] Pass TypeScript, ESLint, 44 tests, the production build, and the interface detector
+**Notes:** Live desktop and mobile visual confirmation remains manual because no controllable browser session was available.
+
+---
+
+## 2026-09-19 — Task #020: Workspace Utilization Audit
+**Status:** 🟢 Done
+**Summary:** Audited every main workspace for unnecessary horizontal width limits and unused desktop space.
+**Steps completed:**
+- [x] Trace the shared 1500 px application workspace and every rendered main view
+- [x] Review Dashboard, Products, Sales, Returns, Stock In, Inventory, Transactions, Sales Verification, Reports, User Management, and Login
+- [x] Separate operational workspace constraints from intentional text, receipt, form, and modal widths
+- [x] Run the interface detector across the audited pages with no mechanical findings
+- [x] Confirm Returns is the only main workspace with an unnecessary nested page-width cap
+**Notes:** `ReturnsView` uses `mx-auto max-w-5xl`, creating the visible unused side space. The completed receipt, login form, receipt modal, search fields, and text measures are intentionally constrained and should remain so.
+
+---
+
+## 2026-09-19 — Task #019: Receipt Details Modal
+**Status:** 🟡 Implementation complete; hosted migration and live visual check pending
+**Summary:** Replaced the expanding receipt card with an accessible modal containing Receipt, Returns, and Activity views.
+**Steps completed:**
+- [x] Keep the receipt table fixed while the selected receipt opens in a modal
+- [x] Support outside-click, Escape, close-button, and keyboard focus management
+- [x] Add a complete receipt and payment view with Print / Save as PDF
+- [x] Show only returns linked to the selected sale, including items, disposition, status, requester, and reviewer
+- [x] Add a receipt-specific activity timeline for sale, return, submission, and verification events
+- [x] Add business-day verification status, submitter, verifier, and timestamps to receipt history
+- [x] Make modal content independently scrollable on smaller screens
+- [x] Pass 44 tests, ESLint, TypeScript, production build, and interface detector
+- [ ] Apply `20260919000400_receipt_modal_details.sql` to hosted Supabase
+- [ ] Complete live desktop and mobile visual acceptance
+**Notes:** Unrelated inventory and sales transactions remain in the main Transactions views to keep the receipt modal focused.
 
 ---
 
 ## 2026-09-19 — Task #018: Cash Checkout and Complete Receipts
-**Status:** 🟡 Implementation complete; hosted migration pending
+**Status:** 🟡 Implementation and hosted migration complete; final print/scanner acceptance pending
 **Summary:** Added cash tendering, authoritative change calculation, post-sale receipt issuance, and payment-aware receipt history.
 **Steps completed:**
 - [x] Require Cash received before completing a sale
@@ -23,8 +83,9 @@
 - [x] Add full receipt viewing and reprinting from Sales receipts history
 - [x] Preserve honest Payment details unavailable messaging for older receipts
 - [x] Pass 44 tests, ESLint, TypeScript, production build, diff validation, and interface detector
-- [ ] Apply `20260919000300_cash_payment_receipts.sql` to hosted Supabase
-- [ ] Complete live cash, change, receipt, reprint, and scanner-pause acceptance tests
+- [x] Apply `20260919000300_cash_payment_receipts.sql` to hosted Supabase
+- [x] Confirm live cash, change, and payment-aware receipt history
+- [ ] Complete live receipt printing, digital PDF, and scanner-pause acceptance tests
 **Notes:** Refund payment tracking remains a separate future task; returns continue recording inventory disposition only.
 
 ---

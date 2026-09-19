@@ -1,10 +1,65 @@
 # Results Log
 
 ## Current State Summary (Updated: 2026-09-19)
-- **Active Task:** Task #018 — Cash checkout and complete receipts
-- **Status:** 🟡 Local implementation verified; hosted migrations pending
-- **Latest Result:** Every new sale can record cash received, calculate change, and issue a complete printable or digital receipt
-- **Verification:** 44 tests, ESLint, TypeScript, production build, and Impeccable interface detector passed
+- **Active Task:** Task #022 — Return-entry modal
+- **Status:** 🟢 Implemented and locally verified
+- **Latest Result:** Selecting or finding a sale now opens its return controls in an accessible, scrollable modal
+- **Verification:** TypeScript, ESLint, 44 tests, production build, and Impeccable interface detector passed
+
+---
+
+## 2026-09-19 — Task #022: Return-Entry Modal Result
+**Outcome:** The returned-item form no longer appears at the bottom of Returns. Both Select sale and Find sale open a focused modal containing every eligible product, its return quantity and condition, the reason, notes, and submission action.
+**Interaction result:** The dialog supports standard keyboard and pointer dismissal, retains its action footer while long receipts scroll, blocks dismissal during submission, and displays submission errors in context.
+**Backend impact:** None. Existing lookup, return validation, approval staging, and inventory rules are preserved.
+**Verification results:**
+- `npx tsc --noEmit`: passed
+- `npm run lint`: passed
+- `npm run test`: 44 tests passed across 10 files
+- `npm run build`: passed
+- Impeccable layout detector: no findings
+**Pending verification:** Confirm the full modal workflow in the running application on desktop and mobile. No controllable browser session was available for automated screenshots.
+
+---
+
+## 2026-09-19 — Task #021: Returns Workspace Layout Result
+**Outcome:** Returns no longer sits inside a redundant centered `max-w-5xl` container. On wide screens, recent sales occupies the primary column and direct sale lookup occupies the secondary column; return feedback and item selection use the full row.
+**Responsive result:** Tablet and mobile widths retain the original linear workflow and do not introduce horizontal overflow.
+**Verification results:**
+- `npx tsc --noEmit`: passed
+- `npm run lint`: passed
+- `npm run test`: 44 tests passed across 10 files
+- `npm run build`: passed
+- Impeccable interface detector: no findings
+**Pending verification:** Live desktop and mobile screenshot acceptance remains manual because no controllable browser session was connected.
+
+---
+
+## 2026-09-19 — Task #020: Workspace Utilization Audit Result
+**Outcome:** The unused horizontal space shown on Returns is caused by `mx-auto max-w-5xl` in `ReturnsView`, nested inside the application’s existing `max-w-[1500px]` workspace.
+**Needs correction:** Returns should remove its nested width cap and use the full shared workspace. Its internal sales list, search, and selected-return form can then distribute available width responsively.
+**Good as-is:** Dashboard, Products, active/archive tables, product registration, Sales, Stock In, Inventory, Transactions, Sales Verification, Reports, and User Management already use the full shared workspace.
+**Intentional constraints:** Login uses a readable `max-w-md` form; the completed-sale receipt uses `max-w-2xl`; the receipt modal uses `max-w-3xl`; search fields and descriptive text use local line-length limits. These should not be stretched.
+**Ultra-wide behavior:** The shared `max-w-[1500px]` shell prevents excessively long tables and controls on very large displays and is not the source of the screenshot’s imbalance.
+**Verification result:** Impeccable interface detector returned no findings. Live screenshots were not available because no controllable browser session was connected.
+
+---
+
+## 2026-09-19 — Task #019: Receipt Details Modal Result
+**Outcome:** View receipt now opens an accessible modal while the receipt table remains fixed behind it. The modal closes by button, Escape, or outside click and scrolls internally on smaller screens.
+**Information result:** Receipt shows the complete purchased-item and payment record. Returns shows only return requests linked to that sale. Activity shows the sale, return reviews, and business-day submission and verification in chronological order.
+**Database result:** Added receipt-history fields for business date, verification status, submitter, verifier, and their timestamps without changing sale or return write behavior.
+**Files added:**
+- `src/components/ui/dialog.tsx`
+- `src/components/ui/tabs.tsx`
+- `supabase/migrations/20260919000400_receipt_modal_details.sql`
+**Verification results:**
+- `npm run test`: 44 tests passed across 10 files
+- `npm run lint`: passed
+- `npx tsc --noEmit`: passed
+- `npm run build`: passed
+- Impeccable interface detector: no findings
+**Pending verification:** Apply the migration to hosted Supabase and complete live desktop/mobile modal, return, activity, close, and printing checks. No connected browser session was available for automated screenshots.
 
 ---
 
@@ -23,7 +78,8 @@
 - `npm run build`: passed
 - Impeccable interface detector: no findings
 - `git diff --check`: passed apart from expected Windows line-ending warnings
-**Pending verification:** Apply the migration to hosted Supabase and complete live checkout, payment, change, printing, digital PDF, scanner-pause, and receipt-history tests.
+**Live result:** The hosted cash checkout and payment-aware receipt list were confirmed with a new sale showing cash received and change.
+**Pending verification:** Complete live receipt printing, digital PDF, and scanner-pause tests.
 
 ---
 

@@ -1,10 +1,42 @@
 # Decision Log
 
 ## Current State Summary (Updated: 2026-09-19)
-- **Active Decision:** Cash payment and change are part of the atomic sale and permanent receipt
+- **Active Decision:** Return entry opens as a focused modal from either sale-selection path
 - **Status:** 🟢 Confirmed
-- **Latest Decision:** Issue a printable or Save-as-PDF receipt after every sale and allow later lookup and reprinting
+- **Latest Decision:** Keep sale discovery on the Returns page and move the selected-sale workflow into a modal
 - **Open Questions:** Future adjustment approval and hosting
+
+---
+
+## 2026-09-19 — Task #022: Return Entry as a Modal
+**Decision:** Selecting a recent sale or finding one by sale number opens the same return-entry modal instead of rendering the form below the page.
+**Why:** The return form requires focused review of quantities and conditions, and its previous position below the sales list was easy to miss. A modal keeps the originating list stable and makes the next action immediately visible.
+**Interaction:** Long item lists scroll inside the dialog while its title and actions remain available. Submission errors stay within the focused workflow, and successful submission closes the modal and updates the sale status.
+**Boundary:** The underlying return request, approval, and inventory behavior remain unchanged.
+
+---
+
+## 2026-09-19 — Task #021: Returns Workflow Layout
+**Decision:** On wide screens, give recent sales the larger column and place direct sale lookup in a narrower side column. Return errors and the selected-item workflow span both columns.
+**Why:** The list is the primary task and benefits from width, while sale-number lookup is a compact secondary path. This uses the desktop workspace without stretching controls or weakening the workflow hierarchy.
+**Responsive behavior:** Below the `xl` breakpoint, all sections return to the existing single-column reading order.
+
+---
+
+## 2026-09-19 — Task #020: Workspace Width Policy
+**Decision:** Dense operational workspaces should use the full shared application content width. Narrow caps remain appropriate for login forms, completed receipts, modals, and readable text lines.
+**Why:** Stretching every element would make forms and receipts harder to scan, while nested page-level caps waste useful table and workflow space.
+**Audit result:** Returns is the only main workspace with a redundant page-level `max-w-5xl` constraint. Other main views already fill the shared shell and distribute content with tables or responsive columns.
+**Boundary:** The shared `max-w-[1500px]` shell remains a deliberate ultra-wide-screen guardrail rather than a page defect.
+
+---
+
+## 2026-09-19 — Task #019: Receipt Modal Scope
+**Decision:** Open a selected sales receipt in a modal with Receipt, Returns, and Activity tabs instead of expanding a card above the receipt table.
+**Why:** Receipt inspection is a temporary, focused task. A modal preserves the user’s position in the receipt list and gives related information a stable layout without moving the table.
+**Related data:** Returns includes only records linked to the selected sale. Activity includes sale completion, return requests and reviews, and the associated business day’s submission and verification.
+**Boundary:** Unrelated inventory receipts, stock adjustments, product changes, and other sales remain in the main Transactions views rather than being duplicated in the modal.
+**Accessibility:** The modal uses the standard dialog focus trap, labelled title and description, Escape/outside-click dismissal, keyboard tabs, and internally scrolling content.
 
 ---
 
