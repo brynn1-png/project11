@@ -1,16 +1,34 @@
 # Progress Log
 
 ## Current State Summary (Updated: 2026-09-19)
-- **Active Task:** Task #009 — Direct-to-cart barcode scanning
+- **Active Task:** Task #010 — Scan-anywhere Stock In selection
 - **Status:** 🟡 Implemented; live scanner acceptance pending
-- **Next Action:** Verify repeated scans with the YHD-8200L in the Sales workspace
+- **Next Action:** Verify Stock In product selection with the YHD-8200L while a receiving field has focus
 - **Blockers:** None for implementation; final acceptance requires the user's physical scanner
-- **Last Completed:** Task #008 on 2026-09-19
+- **Last Completed:** Task #009 on 2026-09-19
+
+---
+
+## 2026-09-19 — Task #010: Scan-Anywhere Stock In Selection
+**Status:** 🟡 In Progress — implementation complete; physical acceptance pending
+**Summary:** Reused the protected hardware-scanner capture on Stock In so a scan selects the receiving product without placing barcode characters into batch fields.
+**Steps completed:**
+- [x] Capture configured `F9`-prefixed scans while any Stock In field has focus
+- [x] Keep safe rapid-scan fallback outside editable fields
+- [x] Match active products by barcode or product code
+- [x] Move focus to Quantity after a successful selection
+- [x] Preserve the draft when rescanning the same product
+- [x] Clear quantity, cost, batch, dates, reference, and notes when switching to a different product
+- [x] Keep inventory unchanged until Confirm stock receipt
+- [x] Preserve the current draft when an unknown code is scanned
+- [x] Pass 35 tests, ESLint, TypeScript, production build, and interface detector
+- [ ] Complete a live Stock In scan test with the YHD-8200L
+**Notes:** Stock In scanning identifies the product only. It never creates a receipt or changes inventory automatically.
 
 ---
 
 ## 2026-09-19 — Task #009: Direct-to-Cart Barcode Scanning
-**Status:** 🟡 In Progress — implementation complete; physical acceptance pending
+**Status:** 🟢 Done
 **Summary:** Simplified Sales so each barcode scan immediately adds one unit to the current receipt instead of requiring a second “Add to sale” step.
 **Steps completed:**
 - [x] Add the first scan directly to Current sale with quantity one
@@ -20,9 +38,12 @@
 - [x] Reject unknown, out-of-stock, and above-stock scans without changing inventory
 - [x] Return keyboard focus to the barcode field after each accepted or rejected scan
 - [x] Add a camera duplicate-read cooldown without preventing intentional repeat scans
-- [x] Pass 27 tests, ESLint, TypeScript, production build, and interface detector
-- [ ] Complete a live repeated-scan test with the YHD-8200L
-**Notes:** Scans update browser cart state only. Supabase is not written per product; it is updated once for the complete receipt after confirmation.
+- [x] Add global `F9`-prefixed scanner capture so scans can be routed correctly while quantity or notes has focus
+- [x] Add a timing-based fallback when focus is outside editable fields
+- [x] Return to the barcode field when Enter finishes a quantity or notes edit
+- [x] Pass 32 tests, ESLint, TypeScript, production build, and interface detector
+- [x] Complete a live repeated-scan test with the YHD-8200L
+**Notes:** The user confirmed the physical scanner workflow is working. Scans update browser cart state only; Supabase is updated once for the complete receipt after confirmation.
 
 ---
 

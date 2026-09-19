@@ -2,22 +2,23 @@
 
 ## Current State Summary (Updated: 2026-09-19)
 - **Open items:** 6
-- **Highest priority:** Complete the live YHD-8200L repeated-scan acceptance test for Task #009
+- **Highest priority:** Production deployment, final visual acceptance, and remaining physical camera coverage
 - **Purpose:** Track work that cannot be completed until required hardware, credentials, assets, decisions, or external access become available
 
 ---
 
 ## PND-001 — Physical USB Barcode Scanner Testing
-**Status:** Ready for testing — YHD-8200L available
+**Status:** Partially complete — Sales workflow confirmed
 **Added:** 2026-09-15
-**Reason:** The keyboard-emulating scanner is now available, and Task #009 has implemented the direct-to-cart flow; physical browser acceptance is still required.
-**Prerequisites:** Run the Sales workflow with the YHD-8200L and representative grocery-product barcodes.
+**Reason:** The keyboard-emulating scanner and Task #009 Sales flow are working; Task #010 Stock In selection plus broader barcode-format and rapid-scan coverage remain to be checked.
+**Prerequisites:** Configure the YHD-8200L to send `F9` as its prefix and `Enter` as its suffix, then run the Sales workflow with representative grocery-product barcodes.
 **Acceptance criteria:**
 - The scanner enters EAN-13, EAN-8, UPC-A, UPC-E, Code 128, and Code 39 values correctly when supported by the device.
 - A scan can identify a product without requiring mouse interaction.
 - Rapid consecutive scans do not merge, duplicate, or drop values.
 - Focus loss and scanner suffix keys such as Enter are handled safely.
 - The workflow is verified in the supported Windows browser environment.
+**Result:** The user confirmed the YHD-8200L scan-anywhere Sales workflow is working. Stock In acceptance plus the remaining format and stress checks are non-blocking follow-up coverage.
 
 ---
 

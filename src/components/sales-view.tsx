@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { useBarcodeScannerCapture } from "@/hooks/use-barcode-scanner-capture";
 import { addProductToCart, updateCartQuantity, type CartLine } from "@/lib/sales-cart";
 
 function peso(value: number) {
@@ -90,6 +91,8 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
     focusBarcode();
   }
 
+  useBarcodeScannerCapture(addBarcodeToCart);
+
   function changeQuantity(productId: string, next: number) {
     const result = updateCartQuantity(cartRef.current, productId, next);
     if (!result.ok) return setMessage(result.message);
@@ -146,6 +149,9 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
                 <Camera data-icon="inline-start" />{cameraOpen ? "Hide camera" : "Use camera"}
               </Button>
             </form>
+            <p className="text-xs leading-relaxed text-[var(--muted-foreground)]">
+              Scan anywhere: configure the USB scanner to send <kbd className="rounded border border-[var(--border)] bg-[var(--muted)] px-1.5 py-0.5 font-mono text-[0.6875rem] text-[var(--foreground)]">F9</kbd> before the barcode and <kbd className="rounded border border-[var(--border)] bg-[var(--muted)] px-1.5 py-0.5 font-mono text-[0.6875rem] text-[var(--foreground)]">Enter</kbd> after it.
+            </p>
 
             {cameraOpen && <div className="rounded-2xl border border-[var(--border)] p-4"><CameraScanner onDetected={addBarcodeToCart} /></div>}
 
@@ -168,7 +174,7 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{line.product.name}</p><p className="mt-1 text-xs text-[var(--muted-foreground)]">{peso(line.product.price * line.quantity)}</p></div>
               <div className="flex items-center gap-1">
                 <Button type="button" variant="ghost" size="icon" onClick={() => changeQuantity(line.product.databaseId, line.quantity - 1)} aria-label={`Decrease ${line.product.name} quantity`}><Minus /></Button>
-                <Input className="w-16 text-center" type="number" min="1" max={line.product.stock} value={line.quantity} onChange={(event) => changeQuantity(line.product.databaseId, Number(event.target.value))} aria-label={`${line.product.name} quantity`} />
+                <Input className="w-16 text-center" type="number" min="1" max={line.product.stock} value={line.quantity} onChange={(event) => changeQuantity(line.product.databaseId, Number(event.target.value))} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); focusBarcode(); } }} aria-label={`${line.product.name} quantity`} />
                 <Button type="button" variant="ghost" size="icon" onClick={() => changeQuantity(line.product.databaseId, line.quantity + 1)} disabled={line.quantity >= line.product.stock} aria-label={`Increase ${line.product.name} quantity`}><Plus /></Button>
                 <Button type="button" variant="ghost" size="icon" onClick={() => changeQuantity(line.product.databaseId, 0)} aria-label={`Remove ${line.product.name}`}><Trash /></Button>
               </div>
@@ -176,7 +182,7 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
           ))}
           <Field>
             <FieldLabel htmlFor="sale-notes">Sale notes</FieldLabel>
-            <Input id="sale-notes" value={notes} maxLength={500} onChange={(event) => setNotes(event.target.value)} placeholder="Optional reference or note" />
+            <Input id="sale-notes" value={notes} maxLength={500} onChange={(event) => setNotes(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); focusBarcode(); } }} placeholder="Optional reference or note" />
           </Field>
         </CardContent>
         <Separator />

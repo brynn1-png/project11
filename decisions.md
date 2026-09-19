@@ -1,10 +1,18 @@
 # Decision Log
 
 ## Current State Summary (Updated: 2026-09-19)
-- **Active Decision:** Direct-to-cart hardware scanning after MVP closure
+- **Active Decision:** Scan-anywhere hardware input now covers Sales and Stock In
 - **Status:** 🟢 Confirmed
-- **Latest Decision:** Each successful scan immediately adds one unit to the local current-sale cart, while Supabase remains unchanged until the whole receipt is confirmed atomically
-- **Open Questions:** Live YHD-8200L acceptance, future adjustment approval, hosting, and final branding
+- **Latest Decision:** A Stock In scan selects a product but never changes inventory; switching products clears the previous receiving draft to prevent cross-product batch data
+- **Open Questions:** Live Stock In scanner acceptance, future adjustment approval, hosting, and final branding
+
+---
+
+## 2026-09-19 — Task #010: Stock In Scanner Routing
+**Decision:** Reuse the `F9` prefix and `Enter` suffix capture in Stock In, routing the completed barcode to product selection from any focused receiving field.
+**Why:** Keyboard-emulating scanner input should not corrupt quantity, cost, date, batch, reference, or notes fields, and receiving must remain an explicit confirmed transaction.
+**Draft safety:** Rescanning the selected product preserves the unfinished receipt. Selecting a different product clears all product-specific receipt fields before switching. Unknown codes leave the current selection and draft unchanged.
+**Transaction boundary:** A scan only identifies a product and focuses Quantity. Only Confirm stock receipt calls the atomic database receiving action.
 
 ---
 
@@ -12,7 +20,9 @@
 **Decision:** Treat a completed barcode scan as an instruction to add one unit directly to Current sale. A repeated scan increments the same cart line, and manual quantity changes happen only in that cart.
 **Why:** The previous selected-product staging card duplicated controls already present in Current sale and slowed keyboard-emulating scanner use.
 **Transaction boundary:** Scanning and quantity edits are browser-only receipt preparation. Only Confirm sale calls the existing atomic receipt function, which revalidates stock and records the full sale in one database transaction.
-**Safety details:** Keep focus scoped to the barcode field rather than globally capturing keyboard input; reject unknown and unavailable products; prevent quantities above loaded stock; throttle duplicate camera frames while allowing deliberate repeat reads.
+**Safety details:** Use an explicit `F9` scanner prefix plus `Enter` suffix for deterministic global capture, including while quantity or notes has focus. Use rapid-input detection only when focus is outside editable fields, because timing alone cannot safely distinguish the first scanner keystroke from normal typing inside an input. Reject unknown and unavailable products, prevent quantities above loaded stock, and throttle duplicate camera frames while allowing deliberate repeat reads.
+**Alternative rejected:** Globally treating every fast numeric sequence as a scan while an editable field has focus, because it can corrupt quantities or notes before the sequence is identifiable.
+**Acceptance:** The user confirmed the YHD-8200L scan-anywhere workflow works in the Sales interface.
 
 ---
 

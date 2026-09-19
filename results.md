@@ -1,10 +1,24 @@
 # Results Log
 
 ## Current State Summary (Updated: 2026-09-19)
-- **Active Task:** Task #009 — Direct-to-cart barcode scanning
+- **Active Task:** Task #010 — Scan-anywhere Stock In selection
 - **Status:** 🟡 Awaiting physical scanner acceptance
-- **Latest Result:** The Sales interface now adds or increments products immediately after a valid scan while retaining one receipt-level database confirmation
-- **Verification:** 27 tests, ESLint, TypeScript, production build, and interface detector passed
+- **Latest Result:** Stock In now routes protected scanner input to product selection while keeping receipt submission explicit
+- **Verification:** 35 tests, ESLint, TypeScript, production build, and interface detector passed
+
+---
+
+## 2026-09-19 — Task #010: Stock In Scanner Result
+**Outcome:** A configured YHD-8200L scan can select an active product from anywhere in the Stock In form without entering barcode characters into the focused receiving field.
+**Workflow result:** Successful selection displays the product and focuses Quantity. The same product preserves the draft; a different product clears the previous product's receiving details; an unknown code preserves the current draft and displays a specific error.
+**Data safety result:** Scanning does not create inventory. Quantity changes only after the user completes the batch form and confirms the atomic stock receipt.
+**Verification results:**
+- `npm run test`: 35 tests passed across 8 files
+- `npm run lint`: passed
+- `npx tsc --noEmit`: passed
+- `npm run build`: passed
+- Impeccable interface detector: no findings
+**Acceptance remaining:** Confirm the focused-field scan behavior with the physical YHD-8200L on Stock In.
 
 ---
 
@@ -13,13 +27,14 @@
 **Interface result:** Removed the intermediate selected-product quantity card, retained cart-side quantity controls, restored barcode-field focus after each attempt, and added concise scan feedback.
 **Data safety result:** No per-item database write was introduced. Confirm sale still submits the complete cart through the existing atomic receipt action, where current inventory is validated again.
 **Camera safety result:** Identical camera frames are ignored for 1.5 seconds so one held barcode does not add many units, while intentional later scans remain possible.
+**Hardware-input result:** An `F9` prefix starts a protected scanner session, printable barcode characters are captured instead of entering the focused control, and `Enter` submits the completed barcode. Rapid unprefixed input is recognized only outside editable fields. Pressing Enter after editing quantity or notes returns focus to manual barcode entry.
 **Verification results:**
-- `npm run test`: 27 tests passed across 6 files
+- `npm run test`: 32 tests passed across 7 files
 - `npm run lint`: passed
 - `npx tsc --noEmit`: passed
 - `npm run build`: passed
 - Impeccable interface detector: no findings
-**Acceptance remaining:** Repeat-scan and focus behavior must be confirmed with the physical YHD-8200L in the target Windows browser.
+**Acceptance:** The user confirmed the physical YHD-8200L workflow is working in the Sales interface.
 
 ---
 
