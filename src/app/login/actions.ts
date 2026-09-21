@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { consumeRateLimit, loginRateLimitIdentifiers, rateLimitMessage } from "@/lib/security/rate-limit";
 import { loginSchema } from "@/lib/validation/auth";
 
 export type LoginState = {
@@ -24,6 +25,12 @@ export async function login(_state: LoginState, formData: FormData): Promise<Log
     return { message: "Supabase is not configured yet. Add the project values to .env.local." };
   }
 
+  const identifiers = await loginRateLimitIdentifiers(parsed.data.email);
+  const accountLimit = await consumeRateLimit("login", identifiers.accountAndAddress);
+  if (!accountLimit.allowed) return { message: rateLimitMessage(accountLimit) };
+  const addressLimit = await consumeRateLimit("login_ip", identifiers.address);
+  if (!addressLimit.allowed) return { message: rateLimitMessage(addressLimit) };
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
 
@@ -41,4 +48,3 @@ export async function logout() {
   }
   redirect("/login");
 }
-

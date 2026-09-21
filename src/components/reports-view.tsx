@@ -102,10 +102,12 @@ export function ReportsView({
   notify,
   canViewSales,
   canViewAllSales,
+  canViewInventory,
 }: {
   notify: (message: string) => void;
   canViewSales: boolean;
   canViewAllSales: boolean;
+  canViewInventory: boolean;
 }) {
   const { products } = useInventory();
   const [today] = useState(manilaToday);
@@ -266,10 +268,10 @@ export function ReportsView({
       <div className="no-print overflow-x-auto pb-1">
         <TabsList className="h-auto min-w-max justify-start">
           {canViewSales && <TabsTrigger value="sales"><Receipt aria-hidden="true" />Daily Sales</TabsTrigger>}
-          <TabsTrigger value="inventory"><Package aria-hidden="true" />Current Inventory</TabsTrigger>
-          <TabsTrigger value="movement"><ArrowsDownUp aria-hidden="true" />Stock Movement</TabsTrigger>
-          <TabsTrigger value="low-stock"><Warning aria-hidden="true" />Low Stock</TabsTrigger>
-          <TabsTrigger value="expiry"><CalendarBlank aria-hidden="true" />Expiring Products</TabsTrigger>
+          {canViewInventory && <TabsTrigger value="inventory"><Package aria-hidden="true" />Current Inventory</TabsTrigger>}
+          {canViewInventory && <TabsTrigger value="movement"><ArrowsDownUp aria-hidden="true" />Stock Movement</TabsTrigger>}
+          {canViewInventory && <TabsTrigger value="low-stock"><Warning aria-hidden="true" />Low Stock</TabsTrigger>}
+          {canViewInventory && <TabsTrigger value="expiry"><CalendarBlank aria-hidden="true" />Expiring Products</TabsTrigger>}
         </TabsList>
       </div>
 

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { hasPermission } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
+import { consumeRateLimit, databaseRateLimitMessage, rateLimitMessage } from "@/lib/security/rate-limit";
 import {
   categoryInputSchema,
   initialStockInputSchema,
@@ -64,6 +65,8 @@ type ArchivedProductRow = {
 };
 
 function errorMessage(error: { message: string }, fallback: string) {
+  const limited = databaseRateLimitMessage(error);
+  if (limited) return limited;
   if (error.message.includes("register_inventory_product_with_initial_stock") || error.message.includes("schema cache")) {
     return "Apply the latest database migration, then try again.";
   }
@@ -83,7 +86,9 @@ function errorMessage(error: { message: string }, fallback: string) {
 
 export async function listInventoryCategories(): Promise<{ ok: true; categories: CategoryOption[] } | { ok: false; message: string }> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, message: "Sign in again to load categories." };
+  if (!user || !hasPermission(user.role, "products:view")) return { ok: false, message: "Your account is not allowed to view product categories." };
+  const limit = await consumeRateLimit("inventory_read");
+  if (!limit.allowed) return { ok: false, message: rateLimitMessage(limit) };
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -252,7 +257,9 @@ export async function updateInventoryProduct(input: ProductInput) {
 
 export async function listArchivedInventoryProducts(): Promise<{ ok: true; products: ArchivedProduct[] } | { ok: false; message: string }> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, message: "Sign in again to load archived products." };
+  if (!user || !hasPermission(user.role, "products:archive")) return { ok: false, message: "Manager access is required to view archived products." };
+  const limit = await consumeRateLimit("inventory_read");
+  if (!limit.allowed) return { ok: false, message: rateLimitMessage(limit) };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_archived_inventory_products");
   if (error) {
@@ -284,13 +291,15 @@ export async function archiveInventoryProduct(productId: string, reason: string,
   }
   const parsed = z.uuid().safeParse(productId);
   const parsedReason = z.string().trim().min(2, "Enter an archive reason.").max(160).safeParse(reason);
+  const parsedConfirmation = z.boolean().safeParse(confirmStockRemoval);
   if (!parsed.success) return { ok: false as const, message: "Product identifier is invalid." };
   if (!parsedReason.success) return { ok: false as const, message: parsedReason.error.issues[0]?.message ?? "Enter an archive reason." };
+  if (!parsedConfirmation.success) return { ok: false as const, message: "Archive confirmation is invalid." };
   const supabase = await createClient();
   const { error } = await supabase.rpc("archive_inventory_product", {
     p_product_id: parsed.data,
     p_reason: parsedReason.data,
-    p_confirm_stock_removal: confirmStockRemoval,
+    p_confirm_stock_removal: parsedConfirmation.data,
   });
   if (error) return { ok: false as const, message: errorMessage(error, "The product could not be archived.") };
   revalidatePath("/");

@@ -18,6 +18,28 @@ describe("role permissions", () => {
     expect(hasPermission("cashier", "reports:view_costs")).toBe(false);
   });
 
+  it("separates personal sales reports from organization-wide reports", () => {
+    expect(hasPermission("administrator", "reports:view_sales_all")).toBe(true);
+    expect(hasPermission("manager", "reports:view_sales_all")).toBe(true);
+    expect(hasPermission("inventory_staff", "reports:view_sales_all")).toBe(false);
+    expect(hasPermission("cashier", "reports:view_sales_all")).toBe(false);
+    expect(hasPermission("inventory_staff", "reports:view_sales_own")).toBe(true);
+    expect(hasPermission("cashier", "reports:view_sales_own")).toBe(true);
+  });
+
+  it("keeps inventory reports away from cashiers", () => {
+    expect(hasPermission("administrator", "reports:view_inventory")).toBe(true);
+    expect(hasPermission("manager", "reports:view_inventory")).toBe(true);
+    expect(hasPermission("inventory_staff", "reports:view_inventory")).toBe(true);
+    expect(hasPermission("cashier", "reports:view_inventory")).toBe(false);
+  });
+
+  it("gives every role its own history but limits organization-wide history", () => {
+    expect(hasPermission("cashier", "transactions:view_own")).toBe(true);
+    expect(hasPermission("cashier", "transactions:view_all")).toBe(false);
+    expect(hasPermission("inventory_staff", "transactions:view_all")).toBe(true);
+  });
+
   it("limits sales verification to administrators and managers", () => {
     expect(hasPermission("administrator", "sales:verify")).toBe(true);
     expect(hasPermission("manager", "sales:verify")).toBe(true);

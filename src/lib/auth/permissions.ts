@@ -12,26 +12,31 @@ export type Permission =
   | "sales:record"
   | "sales:verify"
   | "adjustments:manage"
+  | "transactions:view_own"
   | "transactions:view_all"
+  | "reports:view_sales_own"
+  | "reports:view_sales_all"
+  | "reports:view_inventory"
   | "reports:view_costs"
   | "users:manage";
 
 const ROLE_PERMISSIONS: Record<AppRole, ReadonlySet<Permission>> = {
   administrator: new Set([
     "dashboard:view", "products:view", "products:manage", "products:archive", "products:delete",
-    "stock:receive", "sales:record", "sales:verify", "adjustments:manage", "transactions:view_all",
-    "reports:view_costs", "users:manage",
+    "stock:receive", "sales:record", "sales:verify", "adjustments:manage", "transactions:view_own", "transactions:view_all",
+    "reports:view_sales_own", "reports:view_sales_all", "reports:view_inventory", "reports:view_costs", "users:manage",
   ]),
   manager: new Set([
     "dashboard:view", "products:view", "products:manage", "products:archive",
-    "stock:receive", "sales:record", "sales:verify", "adjustments:manage", "transactions:view_all",
-    "reports:view_costs",
+    "stock:receive", "sales:record", "sales:verify", "adjustments:manage", "transactions:view_own", "transactions:view_all",
+    "reports:view_sales_own", "reports:view_sales_all", "reports:view_inventory", "reports:view_costs",
   ]),
   inventory_staff: new Set([
     "dashboard:view", "products:view", "stock:receive",
-    "sales:record", "transactions:view_all",
+    "sales:record", "transactions:view_own", "transactions:view_all",
+    "reports:view_sales_own", "reports:view_inventory",
   ]),
-  cashier: new Set(["dashboard:view", "products:view", "sales:record"]),
+  cashier: new Set(["dashboard:view", "products:view", "sales:record", "transactions:view_own", "reports:view_sales_own"]),
 };
 
 export function hasPermission(role: AppRole, permission: Permission) {

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { hasPermission } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
+import { consumeRateLimit, databaseRateLimitMessage, rateLimitMessage } from "@/lib/security/rate-limit";
 import { recordSaleSchema, type RecordSaleInput } from "@/lib/validation/sales";
 import { z } from "zod";
 
@@ -50,6 +51,8 @@ export async function recordSale(input: RecordSaleInput): Promise<RecordSaleResu
 
   if (error) {
     console.error("Sale confirmation failed", error);
+    const limited = databaseRateLimitMessage(error);
+    if (limited) return { ok: false, message: limited };
     if (error.message.includes("p_cash_received") || error.message.includes("schema cache")) return { ok: false, message: "Apply the latest database migration before recording cash payments." };
     if (error.message.includes("Insufficient sellable stock")) return { ok: false, message: error.message };
     if (error.message.includes("Cash received")) return { ok: false, message: error.message };
@@ -92,6 +95,8 @@ export async function findSaleForReturn(saleNumber: number): Promise<{ ok: true;
   const user = await getCurrentUser();
   if (!user || !hasPermission(user.role, "sales:record")) return { ok: false, message: "Your account is not allowed to process returns." };
   if (!Number.isSafeInteger(saleNumber) || saleNumber < 1) return { ok: false, message: "Enter a valid sale number." };
+  const limit = await consumeRateLimit("sales_read");
+  if (!limit.allowed) return { ok: false, message: rateLimitMessage(limit) };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_sale_for_return", { p_sale_number: saleNumber });
   if (error || !data?.length) return { ok: false, message: "No completed sale was found with that number." };
@@ -121,6 +126,8 @@ export async function listRecentSales(): Promise<{ ok: true; sales: RecentSaleSu
   if (!user || !hasPermission(user.role, "sales:record")) {
     return { ok: false, message: "Your account is not allowed to view sales for returns." };
   }
+  const limit = await consumeRateLimit("sales_read");
+  if (!limit.allowed) return { ok: false, message: rateLimitMessage(limit) };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_recent_sales", { p_limit: 50 });
@@ -176,6 +183,8 @@ export async function requestSaleReturn(input: z.infer<typeof returnRequestSchem
   });
   if (error) {
     console.error("Return request failed", error);
+    const limited = databaseRateLimitMessage(error);
+    if (limited) return { ok: false, message: limited };
     return { ok: false, message: error.message.includes("exceeds") ? error.message : "The return request could not be recorded." };
   }
   revalidatePath("/");
@@ -188,6 +197,8 @@ export type PendingReturnSummary = { id: string; businessDayId: string; returnNu
 export async function loadSalesVerification(): Promise<{ days: BusinessDaySummary[]; returns: PendingReturnSummary[]; error?: string }> {
   const user = await getCurrentUser();
   if (!user || !hasPermission(user.role, "sales:verify")) return { days: [], returns: [], error: "Manager access is required." };
+  const limit = await consumeRateLimit("history_read");
+  if (!limit.allowed) return { days: [], returns: [], error: rateLimitMessage(limit) };
   const supabase = await createClient();
   const [daysResult, returnsResult] = await Promise.all([
     supabase.rpc("get_business_day_summaries", { p_limit: 14 }),
@@ -204,22 +215,24 @@ export async function changeBusinessDayStatus(id: string, action: "submit" | "ve
   const user = await getCurrentUser();
   if (!user || !hasPermission(user.role, "sales:verify")) return { ok: false, message: "Manager access is required." };
   const parsed = z.uuid().safeParse(id);
-  if (!parsed.success) return { ok: false, message: "Daily sales record identifier is invalid." };
+  const parsedAction = z.enum(["submit", "verify"]).safeParse(action);
+  if (!parsed.success || !parsedAction.success) return { ok: false, message: "Daily sales verification request is invalid." };
   const supabase = await createClient();
-  const { error } = await supabase.rpc(action === "submit" ? "submit_business_day" : "verify_business_day", { p_business_day_id: parsed.data });
-  if (error) return { ok: false, message: error.message };
+  const { error } = await supabase.rpc(parsedAction.data === "submit" ? "submit_business_day" : "verify_business_day", { p_business_day_id: parsed.data });
+  if (error) return { ok: false, message: databaseRateLimitMessage(error) ?? error.message };
   revalidatePath("/");
-  return { ok: true, message: action === "submit" ? "Daily sales record submitted for review." : "Daily sales record verified." };
+  return { ok: true, message: parsedAction.data === "submit" ? "Daily sales record submitted for review." : "Daily sales record verified." };
 }
 
 export async function reviewSaleReturn(id: string, approve: boolean) {
   const user = await getCurrentUser();
   if (!user || !hasPermission(user.role, "sales:verify")) return { ok: false, message: "Manager access is required." };
   const parsed = z.uuid().safeParse(id);
-  if (!parsed.success) return { ok: false, message: "Return identifier is invalid." };
+  const parsedApproval = z.boolean().safeParse(approve);
+  if (!parsed.success || !parsedApproval.success) return { ok: false, message: "Return review request is invalid." };
   const supabase = await createClient();
-  const { error } = await supabase.rpc("review_sale_return", { p_return_id: parsed.data, p_approve: approve });
-  if (error) return { ok: false, message: error.message };
+  const { error } = await supabase.rpc("review_sale_return", { p_return_id: parsed.data, p_approve: parsedApproval.data });
+  if (error) return { ok: false, message: databaseRateLimitMessage(error) ?? error.message };
   revalidatePath("/");
-  return { ok: true, message: approve ? "Return approved and eligible stock restored." : "Return rejected." };
+  return { ok: true, message: parsedApproval.data ? "Return approved and eligible stock restored." : "Return rejected." };
 }

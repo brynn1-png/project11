@@ -1,7 +1,9 @@
 "use server";
 
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { hasPermission } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
+import { consumeRateLimit, rateLimitMessage } from "@/lib/security/rate-limit";
 
 export type ReceiptHistoryItem = {
   productName: string;
@@ -66,7 +68,9 @@ type ReturnRow = {
 
 export async function loadTransactionHistory(): Promise<{ receipts: ReceiptHistoryEntry[]; returns: ReturnHistoryEntry[]; error?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { receipts: [], returns: [], error: "Sign in again to load transaction history." };
+  if (!user || !hasPermission(user.role, "transactions:view_own")) return { receipts: [], returns: [], error: "Your account is not allowed to view transaction history." };
+  const limit = await consumeRateLimit("history_read");
+  if (!limit.allowed) return { receipts: [], returns: [], error: rateLimitMessage(limit) };
 
   const supabase = await createClient();
   const [receiptResult, returnResult] = await Promise.all([

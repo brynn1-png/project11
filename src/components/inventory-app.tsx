@@ -46,10 +46,15 @@ const NAV_ITEMS: { id: View; label: string; icon: typeof CirclesFour }[] = [
 ];
 
 const VIEW_PERMISSIONS: Partial<Record<View, Permission>> = {
+  dashboard: "dashboard:view",
+  products: "products:view",
   "stock-in": "stock:receive",
   sales: "sales:record",
   returns: "sales:record",
+  inventory: "products:view",
+  transactions: "transactions:view_own",
   "sales-review": "sales:verify",
+  reports: "reports:view_sales_own",
   users: "users:manage",
 };
 
@@ -238,7 +243,7 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
           {dataError && <div role="alert" className={cn("mb-6 rounded-2xl border p-4 text-sm font-medium", dataSource === "cached" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-red-200 bg-red-50 text-red-800")}>{dataSource === "cached" ? "Live inventory is unavailable. You can search the last synchronized catalog, but sales cannot be confirmed until the connection returns." : dataError}</div>}
 
           <div key={view === "stock-in" ? `${view}:${receivingProductId ?? "none"}` : view} className="view-enter">
-            {view === "dashboard" && <Dashboard canReceive={hasPermission(currentUser.role, "stock:receive")} onNavigate={navigate} />}
+            {view === "dashboard" && <Dashboard role={currentUser.role} canReceive={hasPermission(currentUser.role, "stock:receive")} onNavigate={navigate} />}
             {view === "products" && <ProductManagementView startCreating={startProductRegistration} canManage={hasPermission(currentUser.role, "products:manage")} canArchive={hasPermission(currentUser.role, "products:archive")} canPermanentlyDelete={hasPermission(currentUser.role, "products:delete")} canReceive={hasPermission(currentUser.role, "stock:receive")} notify={notify} onReceive={(productId) => { setReceivingProductId(productId); setView("stock-in"); }} />}
             {view === "sales" && <SalesView notify={notify} />}
             {view === "returns" && <ReturnsView notify={notify} />}
@@ -246,7 +251,7 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
             {view === "inventory" && <InventoryView status={inventoryFilter} onStatusChange={setInventoryFilter} />}
             {view === "transactions" && <HistoryView />}
             {view === "sales-review" && <SalesVerificationView notify={notify} />}
-            {view === "reports" && <ReportsView notify={notify} canViewSales={hasPermission(currentUser.role, "sales:record")} canViewAllSales={currentUser.role === "administrator" || currentUser.role === "manager"} />}
+            {view === "reports" && <ReportsView notify={notify} canViewSales={hasPermission(currentUser.role, "reports:view_sales_own")} canViewAllSales={hasPermission(currentUser.role, "reports:view_sales_all")} canViewInventory={hasPermission(currentUser.role, "reports:view_inventory")} />}
             {view === "users" && <UsersView users={users} />}
           </div>
         </main>
@@ -285,7 +290,7 @@ function Sidebar({ currentUser, view, open, onClose, onNavigate }: { currentUser
   </>;
 }
 
-function Dashboard({ canReceive, onNavigate }: { canReceive: boolean; onNavigate: (view: View) => void }) {
+function Dashboard({ role, canReceive, onNavigate }: { role: CurrentUser["role"]; canReceive: boolean; onNavigate: (view: View) => void }) {
   const { products, transactions } = useInventory();
   const recentReceipts = groupActivityByReceipt(transactions).slice(0, 6);
   const low = products.filter((p) => getStockStatus(p) === "Low Stock");
@@ -296,12 +301,26 @@ function Dashboard({ canReceive, onNavigate }: { canReceive: boolean; onNavigate
   const todayActivity = transactions.filter((transaction) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(transaction.createdAt)) === today);
   const receivedToday = todayActivity.filter((transaction) => transaction.type === "Stock In").reduce((sum, transaction) => sum + transaction.quantity, 0);
   const releasedToday = todayActivity.filter((transaction) => transaction.type === "Stock Out").reduce((sum, transaction) => sum + transaction.quantity, 0);
-  const metrics = [
+  const managementMetrics = [
     { label: "Products", value: products.length.toLocaleString("en-PH"), note: "active catalog items", icon: Package },
     { label: "Units on hand", value: totalUnits.toLocaleString("en-PH"), note: "available across all products", icon: Storefront },
     { label: "Retail inventory value", value: peso(value), note: "on-hand quantity × selling price", icon: ChartBar },
     { label: "Needs attention", value: (low.length + out.length).toLocaleString("en-PH"), note: `${out.length} out · ${low.length} low`, icon: Warning },
   ];
+  const inventoryMetrics = [
+    { label: "Products", value: products.length.toLocaleString("en-PH"), note: "active catalog items", icon: Package },
+    { label: "Units on hand", value: totalUnits.toLocaleString("en-PH"), note: "available across all products", icon: Storefront },
+    { label: "Units received today", value: receivedToday.toLocaleString("en-PH"), note: "recorded stock receipts", icon: ArrowDown },
+    { label: "Needs attention", value: (low.length + out.length).toLocaleString("en-PH"), note: `${out.length} out · ${low.length} low`, icon: Warning },
+  ];
+  const cashierReceiptsToday = groupActivityByReceipt(todayActivity.filter((transaction) => transaction.type === "Stock Out")).length;
+  const cashierMetrics = [
+    { label: "Available products", value: products.filter((product) => product.stock > 0).length.toLocaleString("en-PH"), note: "ready to add to a sale", icon: Package },
+    { label: "Items sold today", value: releasedToday.toLocaleString("en-PH"), note: "from your recorded sales", icon: ShoppingCart },
+    { label: "Receipts today", value: cashierReceiptsToday.toLocaleString("en-PH"), note: "sales you completed", icon: ClockCounterClockwise },
+    { label: "Needs attention", value: (low.length + out.length).toLocaleString("en-PH"), note: "check availability before selling", icon: Warning },
+  ];
+  const metrics = role === "cashier" ? cashierMetrics : role === "inventory_staff" ? inventoryMetrics : managementMetrics;
   return <div className="dashboard-reveal grid gap-5">
     <section aria-label="Inventory summary" className="panel overflow-hidden">
       <div className="grid sm:grid-cols-2 xl:grid-cols-4">

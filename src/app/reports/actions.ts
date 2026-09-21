@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { hasPermission } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
+import { consumeRateLimit, rateLimitMessage } from "@/lib/security/rate-limit";
 
 const dateRangeSchema = z.object({
   startDate: z.iso.date("Start date is invalid."),
@@ -55,9 +56,11 @@ type SalesReportDatabaseRow = {
 
 export async function loadSalesReport(input: { startDate: string; endDate: string }) {
   const user = await getCurrentUser();
-  if (!user || !hasPermission(user.role, "sales:record")) return { ok: false as const, message: "Your account is not allowed to view sales reports." };
+  if (!user || !hasPermission(user.role, "reports:view_sales_own")) return { ok: false as const, message: "Your account is not allowed to view sales reports." };
   const parsed = dateRangeSchema.safeParse(input);
   if (!parsed.success) return { ok: false as const, message: parsed.error.issues[0]?.message ?? "Review the report dates." };
+  const limit = await consumeRateLimit("reports_read");
+  if (!limit.allowed) return { ok: false as const, message: rateLimitMessage(limit) };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_sales_report", {
@@ -119,9 +122,11 @@ type StockMovementDatabaseRow = {
 
 export async function loadStockMovementReport(input: { startDate: string; endDate: string }) {
   const user = await getCurrentUser();
-  if (!user) return { ok: false as const, message: "Sign in again to view stock movement." };
+  if (!user || !hasPermission(user.role, "reports:view_inventory")) return { ok: false as const, message: "Your account is not allowed to view inventory reports." };
   const parsed = dateRangeSchema.safeParse(input);
   if (!parsed.success) return { ok: false as const, message: parsed.error.issues[0]?.message ?? "Review the report dates." };
+  const limit = await consumeRateLimit("reports_read");
+  if (!limit.allowed) return { ok: false as const, message: rateLimitMessage(limit) };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_stock_movement_report", {
@@ -180,9 +185,11 @@ type ExpiringInventoryDatabaseRow = {
 
 export async function loadExpiringInventoryReport(input: { asOf: string; daysAhead: number }) {
   const user = await getCurrentUser();
-  if (!user) return { ok: false as const, message: "Sign in again to view expiring inventory." };
+  if (!user || !hasPermission(user.role, "reports:view_inventory")) return { ok: false as const, message: "Your account is not allowed to view inventory reports." };
   const parsed = z.object({ asOf: z.iso.date("Report date is invalid."), daysAhead: z.number().int().min(0).max(3650) }).safeParse(input);
   if (!parsed.success) return { ok: false as const, message: parsed.error.issues[0]?.message ?? "Review the expiry report filters." };
+  const limit = await consumeRateLimit("reports_read");
+  if (!limit.allowed) return { ok: false as const, message: rateLimitMessage(limit) };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_expiring_inventory_report", {
