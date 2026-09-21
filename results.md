@@ -1,10 +1,39 @@
 # Results Log
 
-## Current State Summary (Updated: 2026-09-19)
-- **Active Task:** Task #022 — Return-entry modal
+## Current State Summary (Updated: 2026-09-20)
+- **Active Task:** Task #024 — Product table pagination
 - **Status:** 🟢 Implemented and locally verified
-- **Latest Result:** Selecting or finding a sale now opens its return controls in an accessible, scrollable modal
-- **Verification:** TypeScript, ESLint, 44 tests, production build, and Impeccable interface detector passed
+- **Latest Result:** Active and archived product tables now render filtered results in accessible, adjustable pages
+- **Verification:** TypeScript, ESLint, 50 tests, production build, and Impeccable interface detector passed
+
+---
+
+## 2026-09-20 — Task #024: Product Table Pagination Result
+**Outcome:** Active and Archived products now show filtered records in pages instead of rendering every matching row. The footer reports the visible range and total, offers adjustable row counts, and provides compact desktop and mobile navigation.
+**Behavior result:** Search, category, catalog-tab, and page-size changes return to page 1. Filtering and catalog mutations cannot produce a visibly empty out-of-range page.
+**Architecture result:** Pagination logic is reusable and independently tested. It operates on the catalog already loaded by the inventory provider and does not alter database reads, product mutations, or scanner behavior.
+**Verification results:**
+- `npx tsc --noEmit`: passed
+- `npm run lint`: passed
+- `npm run test`: 50 tests passed across 11 files
+- `npm run build`: passed
+- Impeccable interface detector: no findings
+**Pending verification:** Confirm controls and page transitions with more than 25 active or archived products in the running application.
+
+---
+
+## 2026-09-20 — Task #023: Sales Price-Check Result
+**Outcome:** Sales now provides Add to sale and Check price scanner modes. Price checks support the configured USB scanner, manual barcode entry, and the existing camera scanner while keeping the current receipt visible and unchanged.
+**Display result:** A successful lookup shows the product name, barcode, optional description, selling price, unit of measure, and basic availability without exposing cost or exact stock quantity.
+**Safety result:** Price mode bypasses cart mutation and all database writes, clears errors and stale results when switching modes, and automatically returns to Add to sale 15 seconds after a successful lookup.
+**Database impact:** None; price checking uses the already-loaded active product catalog.
+**Verification results:**
+- `npx tsc --noEmit`: passed
+- `npm run lint`: passed
+- `npm run test`: 46 tests passed across 10 files
+- `npm run build`: passed
+- Impeccable interface detector: no findings
+**Pending verification:** Confirm the physical USB scanner, camera scanner, manual lookup, auto-reset, and cart preservation in the running application.
 
 ---
 

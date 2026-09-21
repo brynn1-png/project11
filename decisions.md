@@ -1,10 +1,27 @@
 # Decision Log
 
-## Current State Summary (Updated: 2026-09-19)
-- **Active Decision:** Return entry opens as a focused modal from either sale-selection path
+## Current State Summary (Updated: 2026-09-20)
+- **Active Decision:** Product tables paginate filtered in-memory catalogs before rendering
 - **Status:** 🟢 Confirmed
-- **Latest Decision:** Keep sale discovery on the Returns page and move the selected-sale workflow into a modal
+- **Latest Decision:** Use client-side pagination now and defer database pagination until catalog scale requires it
 - **Open Questions:** Future adjustment approval and hosting
+
+---
+
+## 2026-09-20 — Task #024: Product Pagination Strategy
+**Decision:** Paginate active and archived product tables on the client after applying search and category filters.
+**Why:** The inventory provider already loads the complete active catalog for fast barcode operations, so server pagination would add complexity without reducing the current initial query. Client pagination immediately improves table readability and rendering density.
+**Behavior:** Default to 25 rows with 10, 25, 50, and 100-row options. Reset to page 1 when the result context changes and clamp out-of-range pages after catalog mutations.
+**Future boundary:** Move catalog browsing to database pagination only when real catalog size makes full-catalog loading or filtering measurably expensive; barcode lookup must remain immediate.
+
+---
+
+## 2026-09-20 — Task #023: Price Checking Inside Sales
+**Decision:** Add Price Check as a mode within the Sales scanner rather than creating a separate customer-facing page.
+**Why:** The cashier is the intended operator when a customer asks for a price, so the existing scanner is the fastest and least redundant location. The current receipt remains visible to preserve checkout context.
+**Safety:** Price mode uses the same active-product catalog lookup but never calls cart mutation or database write logic. A visible mode notice, distinct result state, explicit completion action, and 15-second reset reduce accidental scans in the wrong mode.
+**Displayed data:** Show selling price, product name, unit, optional description, and Available or Out of stock. Do not reveal purchase cost or exact inventory quantity.
+**Alternative rejected:** A separate public kiosk page, because the confirmed use case is cashier-assisted price checking inside Sales.
 
 ---
 

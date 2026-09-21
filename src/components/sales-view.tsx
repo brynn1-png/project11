@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Barcode, Camera, CheckCircle, Minus, Plus, Printer, ShoppingCart, Trash, WarningCircle, WifiHigh, WifiSlash } from "@phosphor-icons/react";
+import { Barcode, Camera, CheckCircle, MagnifyingGlass, Minus, Plus, Printer, ShoppingCart, Tag, Trash, WarningCircle, WifiHigh, WifiSlash } from "@phosphor-icons/react";
 import { recordSale, type ConfirmedSaleReceipt } from "@/app/sales/actions";
 import { CameraScanner } from "@/components/camera-scanner";
 import { useInventory } from "@/components/inventory-provider";
@@ -13,9 +13,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SaleReceiptDetails, SaleReceiptPrintSheet } from "@/components/sale-receipt";
 import { useBarcodeScannerCapture } from "@/hooks/use-barcode-scanner-capture";
-import { addProductToCart, updateCartQuantity, type CartLine } from "@/lib/sales-cart";
+import { processProductBarcode, updateCartQuantity, type CartLine, type SalesScanMode } from "@/lib/sales-cart";
+import type { Product } from "@/lib/types";
 
 function peso(value: number) {
   return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(value);
@@ -32,6 +34,8 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
   const [cashReceived, setCashReceived] = useState("");
   const [message, setMessage] = useState("");
   const [scanStatus, setScanStatus] = useState("");
+  const [scanMode, setScanMode] = useState<SalesScanMode>("sale");
+  const [priceProduct, setPriceProduct] = useState<Product | null>(null);
   const [lastSale, setLastSale] = useState<ConfirmedSaleReceipt | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [online, setOnline] = useState(true);
@@ -48,6 +52,18 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
       window.removeEventListener("offline", update);
     };
   }, []);
+
+  useEffect(() => {
+    if (scanMode !== "price" || !priceProduct) return;
+    const timer = window.setTimeout(() => {
+      setScanMode("sale");
+      setPriceProduct(null);
+      setBarcode("");
+      setMessage("");
+      focusBarcode();
+    }, 15000);
+    return () => window.clearTimeout(timer);
+  }, [priceProduct, scanMode]);
 
   const total = useMemo(() => cart.reduce((sum, line) => sum + line.product.price * line.quantity, 0), [cart]);
   const itemCount = useMemo(() => cart.reduce((sum, line) => sum + line.quantity, 0), [cart]);
@@ -68,23 +84,23 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
     }, 0);
   }
 
-  function addBarcodeToCart(value: string) {
-    const clean = value.trim();
-    const product = products.find((item) => item.barcode === clean) ?? null;
-    if (!clean || !product) {
-      setBarcode(clean);
+  function handleBarcode(value: string) {
+    const result = processProductBarcode(products, cartRef.current, value, scanMode);
+    if (!result.ok) {
+      setBarcode(value.trim());
       setScanStatus("");
-      setMessage(clean ? "No active product matches this barcode." : "Scan or enter a barcode first.");
+      setPriceProduct(null);
+      setMessage(result.message);
       focusBarcode(true);
       return;
     }
 
-    const result = addProductToCart(cartRef.current, product);
-    if (!result.ok) {
-      setBarcode(clean);
+    if (result.mode === "price") {
+      setPriceProduct(result.product);
+      setBarcode("");
       setScanStatus("");
-      setMessage(result.message);
-      focusBarcode(true);
+      setMessage("");
+      focusBarcode();
       return;
     }
 
@@ -92,11 +108,30 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
     setBarcode("");
     setMessage("");
     setLastSale(null);
-    setScanStatus(`Added ${product.name} — ${result.quantity} in current sale.`);
+    setScanStatus(`Added ${result.product.name} — ${result.quantity} in current sale.`);
     focusBarcode();
   }
 
-  useBarcodeScannerCapture(addBarcodeToCart, !lastSale);
+  useBarcodeScannerCapture(handleBarcode, !lastSale);
+
+  function changeScanMode(value: string) {
+    if (value !== "sale" && value !== "price") return;
+    setScanMode(value);
+    setBarcode("");
+    setMessage("");
+    setScanStatus("");
+    setPriceProduct(null);
+    setCameraOpen(false);
+    focusBarcode();
+  }
+
+  function finishPriceCheck() {
+    setScanMode("sale");
+    setPriceProduct(null);
+    setBarcode("");
+    setMessage("");
+    focusBarcode();
+  }
 
   function changeQuantity(productId: string, next: number) {
     const result = updateCartQuantity(cartRef.current, productId, next);
@@ -140,39 +175,81 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
   return (
     <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
       <div className="flex min-w-0 flex-col gap-5">
-        <Card className="border-[var(--border)] bg-[var(--surface)] shadow-none">
-          <CardHeader className="flex-row items-start justify-between gap-4">
-            <div className="flex min-w-0 flex-col gap-1.5">
-              <CardTitle>Scan a product</CardTitle>
-              <CardDescription>Scan to add one item. Scan again or edit its quantity in the current sale.</CardDescription>
-            </div>
-            <Badge variant={online && dataSource === "live" ? "default" : "destructive"} className="shrink-0">
-              {online && dataSource === "live" ? <WifiHigh weight="bold" /> : <WifiSlash weight="bold" />}
-              {!online ? "Offline" : dataSource === "cached" ? "Cached data" : dataSource === "live" ? "Online" : "Unavailable"}
-            </Badge>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-5">
-            <form className="flex flex-col gap-3 sm:flex-row" onSubmit={(event) => { event.preventDefault(); addBarcodeToCart(barcode); }}>
-              <div className="relative flex-1">
-                <Barcode className="absolute left-3.5 top-3.5 text-[var(--muted-foreground)]" size={18} />
-                <Input ref={barcodeRef} className="pl-10" value={barcode} onChange={(event) => setBarcode(event.target.value)} placeholder="Scan or enter barcode" aria-label="Product barcode" autoFocus />
+        <Tabs value={scanMode} onValueChange={changeScanMode}>
+          <Card className="border-[var(--border)] bg-[var(--surface)] shadow-none">
+            <CardHeader className="flex-row items-start justify-between gap-4">
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <CardTitle>{scanMode === "sale" ? "Scan a product" : "Check a product price"}</CardTitle>
+                <CardDescription>{scanMode === "sale" ? "Scan to add one item. Scan again or edit its quantity in the current sale." : "Look up a selling price without changing the current sale or inventory."}</CardDescription>
               </div>
-              <Button type="submit"><Plus data-icon="inline-start" />Add to sale</Button>
-              <Button type="button" variant="secondary" onClick={() => setCameraOpen((current) => !current)}>
-                <Camera data-icon="inline-start" />{cameraOpen ? "Hide camera" : "Use camera"}
-              </Button>
-            </form>
-            <p className="text-xs leading-relaxed text-[var(--muted-foreground)]">
-              Scan anywhere: configure the USB scanner to send <kbd className="rounded border border-[var(--border)] bg-[var(--muted)] px-1.5 py-0.5 font-mono text-[0.6875rem] text-[var(--foreground)]">F9</kbd> before the barcode and <kbd className="rounded border border-[var(--border)] bg-[var(--muted)] px-1.5 py-0.5 font-mono text-[0.6875rem] text-[var(--foreground)]">Enter</kbd> after it.
-            </p>
+              <Badge variant={online && dataSource === "live" ? "default" : "destructive"} className="shrink-0">
+                {online && dataSource === "live" ? <WifiHigh weight="bold" /> : <WifiSlash weight="bold" />}
+                {!online ? "Offline" : dataSource === "cached" ? "Cached data" : dataSource === "live" ? "Online" : "Unavailable"}
+              </Badge>
+            </CardHeader>
+            <CardContent>
+              <TabsList className="grid w-full grid-cols-2 sm:w-[22rem]">
+                <TabsTrigger value="sale"><ShoppingCart />Add to sale</TabsTrigger>
+                <TabsTrigger value="price"><Tag />Check price</TabsTrigger>
+              </TabsList>
 
-            {cameraOpen && <div className="rounded-2xl border border-[var(--border)] p-4"><CameraScanner onDetected={addBarcodeToCart} /></div>}
+              <TabsContent value="sale" className="mt-5 flex flex-col gap-5">
+                <form className="flex flex-col gap-3 sm:flex-row" onSubmit={(event) => { event.preventDefault(); handleBarcode(barcode); }}>
+                  <div className="relative flex-1">
+                    <Barcode className="absolute left-3.5 top-3.5 text-[var(--muted-foreground)]" size={18} />
+                    <Input ref={barcodeRef} className="pl-10" value={barcode} onChange={(event) => setBarcode(event.target.value)} placeholder="Scan or enter barcode" aria-label="Product barcode" autoFocus />
+                  </div>
+                  <Button type="submit"><Plus data-icon="inline-start" />Add to sale</Button>
+                  <Button type="button" variant="secondary" onClick={() => setCameraOpen((current) => !current)}>
+                    <Camera data-icon="inline-start" />{cameraOpen ? "Hide camera" : "Use camera"}
+                  </Button>
+                </form>
+                <p className="text-xs leading-relaxed text-[var(--muted-foreground)]">
+                  Scan anywhere: configure the USB scanner to send <kbd className="rounded border border-[var(--border)] bg-[var(--muted)] px-1.5 py-0.5 font-mono text-[0.6875rem] text-[var(--foreground)]">F9</kbd> before the barcode and <kbd className="rounded border border-[var(--border)] bg-[var(--muted)] px-1.5 py-0.5 font-mono text-[0.6875rem] text-[var(--foreground)]">Enter</kbd> after it.
+                </p>
+                {cameraOpen && <div className="rounded-2xl border border-[var(--border)] p-4"><CameraScanner onDetected={handleBarcode} /></div>}
+                {message && <Alert variant="destructive"><WarningCircle /><AlertTitle>Sale needs attention</AlertTitle><AlertDescription>{message}</AlertDescription></Alert>}
+                {!message && <div className="flex min-h-6 items-center gap-2 text-sm" role="status" aria-live="polite">{scanStatus ? <><CheckCircle className="shrink-0 text-[var(--accent)]" size={18} weight="fill" /><span className="font-medium">{scanStatus}</span></> : <><Barcode className="shrink-0 text-[var(--muted-foreground)]" size={18} /><span className="text-[var(--muted-foreground)]">Ready for the next barcode.</span></>}</div>}
+              </TabsContent>
 
-            {message && <Alert variant="destructive"><WarningCircle /><AlertTitle>Sale needs attention</AlertTitle><AlertDescription>{message}</AlertDescription></Alert>}
-
-            {!message && <div className="flex min-h-6 items-center gap-2 text-sm" role="status" aria-live="polite">{scanStatus ? <><CheckCircle className="shrink-0 text-[var(--accent)]" size={18} weight="fill" /><span className="font-medium">{scanStatus}</span></> : <><Barcode className="shrink-0 text-[var(--muted-foreground)]" size={18} /><span className="text-[var(--muted-foreground)]">Ready for the next barcode.</span></>}</div>}
-          </CardContent>
-        </Card>
+              <TabsContent value="price" className="mt-5 flex flex-col gap-5">
+                <Alert>
+                  <Tag />
+                  <AlertTitle>Price check mode</AlertTitle>
+                  <AlertDescription>Scanned products will not be added to the current sale.</AlertDescription>
+                </Alert>
+                <form className="flex flex-col gap-3 sm:flex-row" onSubmit={(event) => { event.preventDefault(); handleBarcode(barcode); }}>
+                  <div className="relative flex-1">
+                    <Barcode className="absolute left-3.5 top-3.5 text-[var(--muted-foreground)]" size={18} />
+                    <Input ref={barcodeRef} className="pl-10" value={barcode} onChange={(event) => setBarcode(event.target.value)} placeholder="Scan or enter barcode" aria-label="Product barcode for price check" autoFocus />
+                  </div>
+                  <Button type="submit"><MagnifyingGlass data-icon="inline-start" />Check price</Button>
+                  <Button type="button" variant="secondary" onClick={() => setCameraOpen((current) => !current)}>
+                    <Camera data-icon="inline-start" />{cameraOpen ? "Hide camera" : "Use camera"}
+                  </Button>
+                </form>
+                {cameraOpen && <div className="rounded-2xl border border-[var(--border)] p-4"><CameraScanner onDetected={handleBarcode} /></div>}
+                {message && <Alert variant="destructive"><WarningCircle /><AlertTitle>Price unavailable</AlertTitle><AlertDescription>{message}</AlertDescription></Alert>}
+                {!message && priceProduct && <section className="rounded-2xl bg-[var(--accent-soft)] p-5 sm:p-6" role="status" aria-live="polite">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <h3 className="text-lg font-bold">{priceProduct.name}</h3>
+                      <p className="mt-1 text-sm text-[var(--muted-foreground)]">{priceProduct.barcode}{priceProduct.description ? ` · ${priceProduct.description}` : ""}</p>
+                    </div>
+                    <Badge variant={priceProduct.stock > 0 ? "default" : "destructive"} className="self-start">{priceProduct.stock > 0 ? "Available" : "Out of stock"}</Badge>
+                  </div>
+                  <div className="mt-6 flex flex-col gap-1">
+                    <span className="text-sm font-medium text-[var(--muted-foreground)]">Selling price</span>
+                    <strong className="text-4xl tracking-[-0.035em] sm:text-5xl">{peso(priceProduct.price)}</strong>
+                    <span className="text-sm text-[var(--muted-foreground)]">per {priceProduct.unit}</span>
+                  </div>
+                  <div className="mt-6 flex justify-end"><Button type="button" variant="secondary" onClick={finishPriceCheck}>Done checking price</Button></div>
+                </section>}
+                {!message && !priceProduct && <div className="flex min-h-20 items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] px-4 text-sm text-[var(--muted-foreground)]" role="status" aria-live="polite"><Barcode size={18} />Ready to check a price.</div>}
+              </TabsContent>
+            </CardContent>
+          </Card>
+        </Tabs>
       </div>
 
       <Card className="border-[var(--border)] bg-[var(--surface)] shadow-none xl:sticky xl:top-24">

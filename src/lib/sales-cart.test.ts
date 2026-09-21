@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addProductToCart, updateCartQuantity, type CartLine } from "@/lib/sales-cart";
+import { addProductToCart, processProductBarcode, updateCartQuantity, type CartLine } from "@/lib/sales-cart";
 import type { Product } from "@/lib/types";
 
 const milk: Product = {
@@ -22,6 +22,20 @@ const milk: Product = {
 const soap: Product = { ...milk, id: "PRD-000002", databaseId: "20000000-0000-4000-8000-000000000002", name: "Test Soap", barcode: "4800000000002", stock: 0 };
 
 describe("sales cart", () => {
+  it("returns product details for a price check without changing the cart", () => {
+    const cart: CartLine[] = [{ product: milk, quantity: 2 }];
+    const result = processProductBarcode([milk, soap], cart, milk.barcode, "price");
+
+    expect(result).toMatchObject({ ok: true, mode: "price", product: milk });
+    expect(cart).toEqual([{ product: milk, quantity: 2 }]);
+  });
+
+  it("uses the normal cart rules when scanning in sale mode", () => {
+    const result = processProductBarcode([milk], [], milk.barcode, "sale");
+
+    expect(result).toMatchObject({ ok: true, mode: "sale", quantity: 1 });
+  });
+
   it("adds a scanned product with quantity one", () => {
     const result = addProductToCart([], milk);
     expect(result).toMatchObject({ ok: true, quantity: 1, cart: [{ quantity: 1 }] });

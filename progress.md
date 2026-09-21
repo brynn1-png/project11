@@ -1,11 +1,43 @@
 # Progress Log
 
-## Current State Summary (Updated: 2026-09-19)
-- **Active Task:** Task #022 — Return-entry modal
+## Current State Summary (Updated: 2026-09-20)
+- **Active Task:** Task #024 — Product table pagination
 - **Status:** 🟢 Implemented and locally verified
-- **Next Action:** Confirm selecting, cancelling, submitting, and scrolling the return modal in the user's running application
+- **Next Action:** Confirm pagination controls with more than 25 active or archived products in the running application
 - **Blockers:** No controllable browser session was available for automated screenshots
-- **Last Completed:** Task #022 Return-entry modal on 2026-09-19
+- **Last Completed:** Task #024 Product table pagination on 2026-09-20
+
+---
+
+## 2026-09-20 — Task #024: Product Table Pagination
+**Status:** 🟢 Done
+**Summary:** Added reusable client-side pagination to the active and archived product tables.
+**Steps completed:**
+- [x] Paginate filtered results with a 25-row default
+- [x] Add 10, 25, 50, and 100-row size options
+- [x] Add result bounds, Previous, compact page numbers, and Next controls
+- [x] Reset to page 1 when search, category, catalog mode, or page size changes
+- [x] Clamp display safely when filtering, archiving, or restoring reduces the number of pages
+- [x] Preserve mobile table scrolling and provide compact mobile page controls
+- [x] Add pagination boundary and compact-page-number tests
+- [x] Pass TypeScript, ESLint, 50 tests, production build, and the interface detector
+**Notes:** Pagination remains client-side because the active catalog is already loaded for immediate scanning and lookup. No database migration was required.
+
+---
+
+## 2026-09-20 — Task #023: Sales Price-Check Mode
+**Status:** 🟢 Done
+**Summary:** Added a read-only price-check option to the existing Sales scanner without adding a separate page.
+**Steps completed:**
+- [x] Add Add to sale and Check price modes to the scanner workspace
+- [x] Reuse manual, USB, and camera barcode lookup in both modes
+- [x] Show product name, selling price, unit, description, and basic availability
+- [x] Keep the current cart, inventory, and database unchanged during price checks
+- [x] Return to Add to sale after explicit dismissal or 15 seconds
+- [x] Preserve cached-catalog lookup while keeping sale confirmation live-only
+- [x] Add pure scan-routing tests for price and sale modes
+- [x] Pass TypeScript, ESLint, 46 tests, production build, and the interface detector
+**Notes:** No database migration was required. Live physical-scanner and camera acceptance remains manual because no controllable browser session was available.
 
 ---
 

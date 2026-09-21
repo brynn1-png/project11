@@ -2,10 +2,31 @@ import type { Product } from "@/lib/types";
 import { formatQuantity } from "@/lib/units";
 
 export type CartLine = { product: Product; quantity: number };
+export type SalesScanMode = "sale" | "price";
 
 type CartResult =
   | { ok: true; cart: CartLine[]; quantity: number }
   | { ok: false; message: string };
+
+type ProductScanResult =
+  | { ok: true; mode: "price"; product: Product }
+  | { ok: true; mode: "sale"; product: Product; cart: CartLine[]; quantity: number }
+  | { ok: false; message: string };
+
+export function processProductBarcode(products: Product[], cart: CartLine[], barcode: string, mode: SalesScanMode): ProductScanResult {
+  const clean = barcode.trim();
+  const product = products.find((item) => item.barcode === clean) ?? null;
+
+  if (!clean || !product) {
+    return { ok: false, message: clean ? "No active product matches this barcode." : "Scan or enter a barcode first." };
+  }
+  if (mode === "price") return { ok: true, mode, product };
+
+  const result = addProductToCart(cart, product);
+  return result.ok
+    ? { ok: true, mode, product, cart: result.cart, quantity: result.quantity }
+    : result;
+}
 
 export function addProductToCart(cart: CartLine[], product: Product): CartResult {
   const existing = cart.find((line) => line.product.databaseId === product.databaseId);
