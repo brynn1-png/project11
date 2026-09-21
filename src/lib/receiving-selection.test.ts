@@ -24,6 +24,11 @@ describe("receiving product selection", () => {
     expect(findReceivingProduct([product], " 4800194185080 ")?.databaseId).toBe(product.databaseId);
   });
 
+  it("finds alphanumeric barcodes regardless of scanner casing", () => {
+    const keySwitch = { ...product, barcode: "K500003T" };
+    expect(findReceivingProduct([keySwitch], "k500003t")?.databaseId).toBe(product.databaseId);
+  });
+
   it("finds a product code without case sensitivity", () => {
     expect(findReceivingProduct([product], "prd-000001")?.databaseId).toBe(product.databaseId);
   });

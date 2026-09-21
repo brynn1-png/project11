@@ -1,5 +1,6 @@
 import type { Product } from "@/lib/types";
 import { formatQuantity } from "@/lib/units";
+import { findBarcodeMatch, normalizeBarcodeValue } from "@/lib/barcode-values";
 
 export type CartLine = { product: Product; quantity: number };
 export type SalesScanMode = "sale" | "price";
@@ -14,8 +15,8 @@ type ProductScanResult =
   | { ok: false; message: string };
 
 export function processProductBarcode(products: Product[], cart: CartLine[], barcode: string, mode: SalesScanMode): ProductScanResult {
-  const clean = barcode.trim();
-  const product = products.find((item) => item.barcode === clean) ?? null;
+  const clean = normalizeBarcodeValue(barcode);
+  const product = findBarcodeMatch(products, barcode, (item) => item.barcode);
 
   if (!clean || !product) {
     return { ok: false, message: clean ? "No active product matches this barcode." : "Scan or enter a barcode first." };

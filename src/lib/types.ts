@@ -20,6 +20,8 @@ export type Product = {
 
 export type StockTransaction = {
   id: string;
+  groupId?: string;
+  reference?: string;
   productId: string;
   productName: string;
   barcode: string;

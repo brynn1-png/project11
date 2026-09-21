@@ -1,13 +1,14 @@
 import { z } from "zod";
+import { BARCODE_MAX_LENGTH, BARCODE_MIN_LENGTH, PRINTABLE_BARCODE_PATTERN } from "@/lib/barcode-values";
 
 export const expiryTrackingSchema = z.enum(["required", "not_applicable"]);
 
 const optionalText = (maximum: number) => z.string().trim().max(maximum).optional();
 const barcodeSchema = z.string()
   .trim()
-  .min(4, "Barcode must contain at least 4 characters.")
-  .max(64, "Barcode cannot exceed 64 characters.")
-  .regex(/^[!-~]+$/, "Barcode can only contain printable characters without spaces.");
+  .min(BARCODE_MIN_LENGTH, `Barcode must contain at least ${BARCODE_MIN_LENGTH} characters.`)
+  .max(BARCODE_MAX_LENGTH, `Barcode cannot exceed ${BARCODE_MAX_LENGTH} characters.`)
+  .regex(PRINTABLE_BARCODE_PATTERN, "Barcode can only contain printable ASCII characters.");
 
 export const categoryInputSchema = z.object({
   name: z.string().trim().min(2, "Category name must contain at least 2 characters.").max(80),

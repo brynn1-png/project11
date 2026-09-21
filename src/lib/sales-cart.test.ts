@@ -36,6 +36,30 @@ describe("sales cart", () => {
     expect(result).toMatchObject({ ok: true, mode: "sale", quantity: 1 });
   });
 
+  it("matches alphanumeric barcodes without case sensitivity", () => {
+    const keySwitch = { ...milk, name: "Key Switch", barcode: "K500003T" };
+
+    expect(processProductBarcode([keySwitch], [], "k500003t", "sale")).toMatchObject({ ok: true, product: keySwitch });
+  });
+
+  it("matches punctuation and internal spaces used by Code 39 and Code 128", () => {
+    const part = { ...milk, name: "Service Part", barcode: "PART 50-A/2" };
+
+    expect(processProductBarcode([part], [], "PART 50-A/2", "sale")).toMatchObject({ ok: true, product: part });
+  });
+
+  it("treats UPC-A and its leading-zero EAN-13 representation as the same code", () => {
+    const upcProduct = { ...milk, barcode: "123456789012" };
+
+    expect(processProductBarcode([upcProduct], [], "0123456789012", "sale")).toMatchObject({ ok: true, product: upcProduct });
+  });
+
+  it("ignores scanner symbology identifiers before matching", () => {
+    const code128Product = { ...milk, barcode: "K500003T" };
+
+    expect(processProductBarcode([code128Product], [], "]C1K500003T", "sale")).toMatchObject({ ok: true, product: code128Product });
+  });
+
   it("adds a scanned product with quantity one", () => {
     const result = addProductToCart([], milk);
     expect(result).toMatchObject({ ok: true, quantity: 1, cart: [{ quantity: 1 }] });
@@ -60,6 +84,13 @@ describe("sales cart", () => {
   it("rejects manual quantities above stock", () => {
     const cart: CartLine[] = [{ product: milk, quantity: 1 }];
     expect(updateCartQuantity(cart, milk.databaseId, 3).ok).toBe(false);
+  });
+
+  it("sets a large cashier-entered quantity in one update", () => {
+    const bulkMilk = { ...milk, stock: 40 };
+    const result = updateCartQuantity([{ product: bulkMilk, quantity: 1 }], bulkMilk.databaseId, 20);
+
+    expect(result).toMatchObject({ ok: true, quantity: 20, cart: [{ quantity: 20 }] });
   });
 
   it("removes a line when its quantity reaches zero", () => {

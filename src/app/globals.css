@@ -107,6 +107,11 @@ button { -webkit-tap-highlight-color: transparent; }
   animation: scan-sweep 1.8s var(--ease-in-out) infinite alternate;
 }
 
+.stock-alert-attention {
+  transform-origin: 70% 20%;
+  animation: stock-alert-attention 700ms var(--ease-out) both;
+}
+
 @keyframes view-enter {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -122,10 +127,18 @@ button { -webkit-tap-highlight-color: transparent; }
   to { transform: translateY(70px); }
 }
 
+@keyframes stock-alert-attention {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  28% { transform: scale(1.05) rotate(-2deg); }
+  52% { transform: scale(1.03) rotate(2deg); }
+  74% { transform: scale(1.01) rotate(-1deg); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
   .view-enter, .dashboard-reveal > * { transform: none !important; }
   .scan-line { animation: none !important; transform: none !important; }
+  .stock-alert-attention { animation: none !important; transform: none !important; }
 }
 
 @media print {

@@ -33,6 +33,21 @@ describe("barcode scanner capture", () => {
     expect(result).toMatchObject({ barcode: "INV-000123", preventDefault: true });
   });
 
+  it("captures mixed-case, punctuation, and spaces from a configured scanner", () => {
+    const result = enterKeys(["F9", ..."Part 50-A/2", "Enter"], true);
+    expect(result).toMatchObject({ barcode: "Part 50-A/2", preventDefault: true });
+  });
+
+  it("keeps a prefixed scan active through Shift events used for uppercase letters", () => {
+    const result = enterKeys(["F9", "Shift", "K", "5", "0", "0", "0", "0", "3", "Shift", "T", "Enter"], true);
+    expect(result).toMatchObject({ barcode: "K500003T", preventDefault: true });
+  });
+
+  it("keeps a rapid scan active through modifier and lock-key events", () => {
+    const result = enterKeys(["CapsLock", "K", "5", "0", "0", "0", "0", "3", "NumLock", "T", "Enter"]);
+    expect(result).toMatchObject({ barcode: "K500003T", preventDefault: true });
+  });
+
   it("does not capture unprefixed input inside an editable field", () => {
     const result = enterKeys([..."4800194185080", "Enter"], true);
     expect(result.barcode).toBeUndefined();

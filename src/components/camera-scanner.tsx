@@ -80,7 +80,6 @@ export function CameraScanner({ onDetected }: { onDetected: (barcode: string) =>
             <div>
               <Camera size={34} weight="duotone" className="mx-auto mb-3 text-emerald-300" />
               <p className="font-semibold">Camera preview</p>
-              <p className="mt-1 max-w-xs text-sm text-white/65">Use any built-in, USB, or mobile camera recognized by your browser.</p>
             </div>
           </div>
         )}

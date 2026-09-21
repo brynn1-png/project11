@@ -65,8 +65,7 @@ export function BarcodePrintPanel({ product, onClose, onReceive }: { product: La
     <section className="panel overflow-hidden" aria-labelledby="barcode-print-title">
       <div className="flex flex-col gap-4 border-b border-[var(--border)] p-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--accent)]">Printable label</p>
-          <h2 id="barcode-print-title" className="mt-1 text-lg font-bold">{product.name}</h2>
+          <h2 id="barcode-print-title" className="text-lg font-bold">{product.name}</h2>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">Code 128 · {product.productCode}</p>
         </div>
         <Button variant="ghost" onClick={onClose}>Close</Button>

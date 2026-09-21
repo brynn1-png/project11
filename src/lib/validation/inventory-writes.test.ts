@@ -23,8 +23,12 @@ describe("inventory write validation", () => {
     expect(productInputSchema.safeParse({ ...product, barcodeMode: "generated", barcode: "" }).success).toBe(true);
   });
 
-  it("rejects whitespace in a manufacturer barcode", () => {
-    expect(productInputSchema.safeParse({ ...product, barcode: "ABC 123" }).success).toBe(false);
+  it("accepts printable spaces used by Code 39 and Code 128", () => {
+    expect(productInputSchema.safeParse({ ...product, barcode: "ABC 123" }).success).toBe(true);
+  });
+
+  it("rejects non-printable characters in a manufacturer barcode", () => {
+    expect(productInputSchema.safeParse({ ...product, barcode: "ABC\n123" }).success).toBe(false);
   });
 
   it("requires expiry for products that track it", () => {

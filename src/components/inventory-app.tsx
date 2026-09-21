@@ -20,7 +20,8 @@ import { DashboardCharts } from "@/components/dashboard-charts";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { cn } from "@/lib/utils";
-import { getStockStatus, type StockTransaction, type UserProfile } from "@/lib/types";
+import { getStockStatus, type UserProfile } from "@/lib/types";
+import { groupActivityByReceipt, type ReceiptActivity } from "@/lib/activity-groups";
 import { getStockAlerts, type StockAlert } from "@/lib/stock-alerts";
 import { formatQuantity, pluralizeUnit } from "@/lib/units";
 import { formatRole, hasPermission, type Permission } from "@/lib/auth/permissions";
@@ -50,17 +51,17 @@ const VIEW_PERMISSIONS: Partial<Record<View, Permission>> = {
   users: "users:manage",
 };
 
-const VIEW_META: Record<View, { title: string; description: string }> = {
-  dashboard: { title: "Dashboard", description: "Here is today’s inventory activity and the items that need attention." },
-  products: { title: "Products", description: "Register products, assign barcodes, and keep product details organized." },
-  sales: { title: "Sales", description: "Scan products, enter quantities, and confirm one complete customer sale." },
-  returns: { title: "Returns", description: "Record returned items against their original sale for manager review." },
-  "stock-in": { title: "Stock in", description: "Record products received and update available quantities immediately." },
-  inventory: { title: "Inventory", description: "Review every product’s current quantity and stock status." },
-  transactions: { title: "Transactions", description: "Review inventory activity, permanent sales receipts, and return history." },
-  "sales-review": { title: "Sales verification", description: "Review returns and confirm the store’s recorded activity for each business day." },
-  reports: { title: "Reports", description: "Review inventory health and export current records." },
-  users: { title: "User management", description: "Review authenticated users, roles, and account status." },
+const VIEW_TITLES: Record<View, string> = {
+  dashboard: "Dashboard",
+  products: "Products",
+  sales: "Sales",
+  returns: "Returns",
+  "stock-in": "Stock in",
+  inventory: "Inventory",
+  transactions: "Transactions",
+  "sales-review": "Sales verification",
+  reports: "Reports",
+  users: "User management",
 };
 
 function formatDate(value: string, withTime = true) {
@@ -84,7 +85,23 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
   const reduceMotion = useReducedMotion();
   const { products, dataSource, lastSyncedAt } = useInventory();
   const stockAlerts = useMemo(() => getStockAlerts(products), [products]);
+  const previousAlertCount = useRef(stockAlerts.length);
+  const [alertAttention, setAlertAttention] = useState(false);
   const canReceiveStock = hasPermission(currentUser.role, "stock:receive");
+
+  useEffect(() => {
+    const previousCount = previousAlertCount.current;
+    previousAlertCount.current = stockAlerts.length;
+
+    if (stockAlerts.length <= previousCount || stockAlerts.length === 0 || notificationOpen || reduceMotion) {
+      setAlertAttention(false);
+      return;
+    }
+
+    setAlertAttention(true);
+    const attentionTimer = window.setTimeout(() => setAlertAttention(false), 900);
+    return () => window.clearTimeout(attentionTimer);
+  }, [notificationOpen, reduceMotion, stockAlerts.length]);
 
   useEffect(() => {
     if (!notificationOpen) return;
@@ -131,8 +148,7 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
     setView("inventory");
   }
 
-  const meta = VIEW_META[view];
-  const pageTitle = view === "dashboard" ? `Good morning, ${currentUser.fullName.split(" ")[0]}` : meta.title;
+  const pageTitle = view === "dashboard" ? `Good morning, ${currentUser.fullName.split(" ")[0]}` : VIEW_TITLES[view];
   return (
     <div className="min-h-[100dvh] bg-[var(--background)]">
       <Sidebar currentUser={currentUser} view={view} open={mobileNav} onClose={() => setMobileNav(false)} onNavigate={(next) => { navigate(next); setMobileNav(false); }} />
@@ -140,21 +156,33 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
       <div className="lg:pl-[264px]">
         <header className="no-print sticky top-0 z-20 flex h-16 items-center justify-between border-b border-[var(--border)] bg-[color:rgba(247,249,242,.92)] px-4 backdrop-blur-md sm:px-6 lg:px-8">
           <button className="grid size-11 place-items-center rounded-xl hover:bg-[var(--muted)] lg:hidden" onClick={() => setMobileNav(true)} aria-label="Open navigation"><List size={22} /></button>
-          <div className="hidden items-center gap-2 text-sm text-[var(--muted-foreground)] lg:flex"><span>South Emerald</span><CaretRight size={14} /><span className="font-semibold text-[var(--foreground)]">{meta.title}</span></div>
+          <div className="hidden items-center gap-2 text-sm text-[var(--muted-foreground)] lg:flex"><span>South Emerald</span><CaretRight size={14} /><span className="font-semibold text-[var(--foreground)]">{VIEW_TITLES[view]}</span></div>
           <div className="ml-auto flex items-center gap-2">
             <span className="hidden rounded-lg bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-bold text-[var(--accent-strong)] sm:inline" title={lastSyncedAt ? `Last synchronized ${formatDate(lastSyncedAt)}` : undefined}>{dataSource === "live" ? "Live inventory" : dataSource === "cached" ? "Cached inventory" : "Data unavailable"}</span>
             <div className="relative" ref={notificationRef}>
               <button
                 ref={notificationButtonRef}
-                className="relative grid size-11 place-items-center rounded-xl text-[var(--muted-foreground)] hover:bg-[var(--muted)]"
+                className={cn(
+                  "relative flex min-h-11 items-center justify-center gap-2 rounded-xl transition-[background-color,border-color,color,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2",
+                  stockAlerts.length > 0
+                    ? "min-w-11 border border-amber-300 bg-amber-50 px-2 text-amber-950 hover:bg-amber-100 sm:px-3"
+                    : "size-11 text-[var(--muted-foreground)] hover:bg-[var(--muted)]",
+                  alertAttention && "stock-alert-attention",
+                )}
                 aria-label={stockAlerts.length === 0 ? "No stock alerts" : `${stockAlerts.length} stock alert${stockAlerts.length === 1 ? "" : "s"}`}
                 aria-expanded={notificationOpen}
                 aria-controls="stock-alerts-panel"
                 onClick={() => setNotificationOpen((open) => !open)}
               >
-                <Bell size={20} weight={stockAlerts.length > 0 ? "fill" : "regular"} />
-                {stockAlerts.length > 0 && <span className="absolute right-0.5 top-0.5 grid min-h-4 min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[0.625rem] font-bold leading-none text-white">{stockAlerts.length > 99 ? "99+" : stockAlerts.length}</span>}
+                <Bell aria-hidden="true" size={20} weight={stockAlerts.length > 0 ? "fill" : "regular"} />
+                {stockAlerts.length > 0 && (
+                  <>
+                    <span aria-hidden="true" className="hidden text-xs font-bold sm:inline">Stock alerts</span>
+                    <span aria-hidden="true" className="grid min-h-5 min-w-5 place-items-center rounded-md bg-red-700 px-1.5 text-[0.6875rem] font-bold leading-none text-white">{stockAlerts.length > 99 ? "99+" : stockAlerts.length}</span>
+                  </>
+                )}
               </button>
+              <span className="sr-only" aria-live="polite">{stockAlerts.length > 0 ? `${stockAlerts.length} products need stock attention.` : "No products need stock attention."}</span>
               {notificationOpen && (
                 <section id="stock-alerts-panel" aria-labelledby="stock-alerts-title" className="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[0_18px_50px_rgba(12,45,33,.16)]">
                   <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] p-4">
@@ -167,7 +195,7 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
                   {stockAlerts.length > 0 ? (
                     <div className="max-h-[min(26rem,calc(100dvh-8rem))] overflow-y-auto p-2">
                       {stockAlerts.map((alert) => (
-                        <button key={alert.product.databaseId} className="flex min-h-16 w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-[var(--muted)]" onClick={() => openStockAlert(alert)}>
+                        <button key={alert.product.databaseId} className="flex min-h-16 w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-[var(--muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ring)]" onClick={() => openStockAlert(alert)}>
                           <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl", alert.status === "Out of Stock" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700")}><Warning size={18} weight="fill" /></span>
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-semibold">{alert.product.name}</span>
@@ -193,7 +221,7 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
 
         <main className="mx-auto max-w-[1500px] p-4 sm:p-6 lg:p-8">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div><h1 className="text-2xl font-bold tracking-[-0.025em] sm:text-[1.8rem]">{pageTitle}</h1><p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--muted-foreground)]">{meta.description}</p></div>
+            <h1 className="text-2xl font-bold tracking-[-0.025em] sm:text-[1.8rem]">{pageTitle}</h1>
           </div>
 
           {dataError && <div role="alert" className={cn("mb-6 rounded-2xl border p-4 text-sm font-medium", dataSource === "cached" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-red-200 bg-red-50 text-red-800")}>{dataSource === "cached" ? "Live inventory is unavailable. You can search the last synchronized catalog, but sales cannot be confirmed until the connection returns." : dataError}</div>}
@@ -248,6 +276,7 @@ function Sidebar({ currentUser, view, open, onClose, onNavigate }: { currentUser
 
 function Dashboard({ canReceive, onNavigate }: { canReceive: boolean; onNavigate: (view: View) => void }) {
   const { products, transactions } = useInventory();
+  const recentReceipts = groupActivityByReceipt(transactions).slice(0, 6);
   const low = products.filter((p) => getStockStatus(p) === "Low Stock");
   const out = products.filter((p) => p.stock === 0);
   const totalUnits = products.reduce((sum, p) => sum + p.stock, 0);
@@ -276,7 +305,7 @@ function Dashboard({ canReceive, onNavigate }: { canReceive: boolean; onNavigate
 
     <section className="grid gap-5 xl:grid-cols-[minmax(320px,.55fr)_minmax(0,1.45fr)]">
       <div className="panel p-5 sm:p-6"><div className="flex items-start justify-between gap-4"><div><h2 className="font-bold">Needs attention</h2><p className="mt-1 text-xs text-[var(--muted-foreground)]">Out-of-stock products appear first</p></div><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-700"><Warning size={19} weight="fill" aria-hidden="true" /></span></div><div className="mt-4 flex flex-col gap-1">{[...out, ...low].slice(0, 6).map((product) => <button key={product.id} disabled={!canReceive} onClick={() => onNavigate("stock-in")} className="flex min-h-14 w-full items-center justify-between rounded-xl px-2 text-left transition-colors hover:bg-[var(--muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:cursor-default"><div className="min-w-0"><p className="truncate text-sm font-semibold">{product.name}</p><p className="text-xs text-[var(--muted-foreground)]">Restock at {formatQuantity(product.minimumStock, product.unit)}</p></div><div className="ml-3 text-right"><p className={cn("font-bold", product.stock === 0 ? "text-red-700" : "text-amber-800")}>{product.stock}</p><p className="text-[11px] text-[var(--muted-foreground)]">on hand</p></div></button>)}{low.length + out.length === 0 && <div className="py-8 text-center"><Check size={22} weight="bold" className="mx-auto text-[var(--accent)]" /><p className="mt-2 text-sm font-semibold">Stock levels look healthy</p><p className="mt-1 text-xs text-[var(--muted-foreground)]">Every product is above its restock level.</p></div>}</div>{canReceive && low.length + out.length > 0 && <Button className="mt-4 w-full" variant="secondary" onClick={() => onNavigate("stock-in")}><ArrowDown />Restock inventory</Button>}</div>
-      <div className="panel overflow-hidden"><div className="flex items-center justify-between gap-4 p-5 sm:px-6"><div><h2 className="font-bold">Recent activity</h2><p className="mt-1 text-xs text-[var(--muted-foreground)]">Latest recorded inventory movement</p></div><Button variant="ghost" size="sm" onClick={() => onNavigate("transactions")}>View all<CaretRight /></Button></div>{transactions.length > 0 ? <div className="overflow-x-auto"><TransactionTable transactions={transactions.slice(0, 6)} compact /></div> : <EmptyState title="No inventory activity yet" text="Received stock and completed sales will appear here." />}</div>
+      <div className="panel overflow-hidden"><div className="flex items-center justify-between gap-4 p-5 sm:px-6"><div><h2 className="font-bold">Recent activity</h2><p className="mt-1 text-xs text-[var(--muted-foreground)]">Latest sales and stock receipts</p></div><Button variant="ghost" size="sm" onClick={() => onNavigate("transactions")}>View all<CaretRight /></Button></div>{recentReceipts.length > 0 ? <div className="overflow-x-auto"><ReceiptActivityTable receipts={recentReceipts} /></div> : <EmptyState title="No inventory activity yet" text="Received stock and completed sales will appear here." />}</div>
     </section>
   </div>;
 }
@@ -288,7 +317,12 @@ function InventoryView({ status, onStatusChange }: { status: InventoryFilter; on
   return <div className="grid gap-4"><div className="flex flex-wrap gap-2">{filters.map((item) => <button key={item} onClick={() => onStatusChange(item)} className={cn("min-h-10 rounded-xl px-4 text-sm font-semibold", status === item ? "bg-[#173b2d] text-white" : "border border-[var(--border)] bg-white text-[var(--muted-foreground)] hover:bg-[var(--muted)]")}>{item}</button>)}</div><div className="panel overflow-hidden">{filtered.length > 0 ? <div className="overflow-x-auto"><table className="data-table min-w-[760px]"><thead><tr><th>Product</th><th>Category</th><th>Current stock</th><th>Minimum</th><th>Status</th><th>Updated</th></tr></thead><tbody>{filtered.map((p) => <tr key={p.id}><td><p className="font-semibold">{p.name}</p><p className="mt-0.5 font-mono text-xs text-[var(--muted-foreground)]">{p.barcode}</p></td><td>{p.category}</td><td><span className="text-lg font-bold">{p.stock}</span> <span className="text-xs text-[var(--muted-foreground)]">{pluralizeUnit(p.stock, p.unit)}</span></td><td>{formatQuantity(p.minimumStock, p.unit)}</td><td><StatusBadge status={getStockStatus(p)} /></td><td className="text-[var(--muted-foreground)]">{formatDate(p.updatedAt)}</td></tr>)}</tbody></table></div> : <EmptyState title={products.length === 0 ? "No inventory yet" : `No ${status.toLowerCase()} products`} text={products.length === 0 ? "Inventory quantities will appear after products and batches are added." : "Choose another stock-status filter."} />}</div></div>;
 }
 
-function TransactionTable({ transactions, compact = false }: { transactions: StockTransaction[]; compact?: boolean }) { return <table className={cn("data-table", compact ? "min-w-[700px]" : "min-w-[900px]")}><thead><tr><th>Transaction</th><th>Product</th><th>Type</th><th>Quantity</th><th>Stock change</th>{!compact && <th>User</th>}<th>Date</th></tr></thead><tbody>{transactions.map((t) => <tr key={t.id}><td className="max-w-36 truncate font-mono text-xs text-[var(--muted-foreground)]" title={t.id}>{t.id}</td><td><p className="font-semibold">{t.productName}</p>{!compact && <p className="text-xs text-[var(--muted-foreground)]">{t.notes || "No notes"}</p>}</td><td><span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold", t.type === "Stock In" ? "bg-emerald-50 text-emerald-800" : "bg-orange-50 text-orange-800")}>{t.type === "Stock In" ? <ArrowDown size={13} /> : <ArrowUp size={13} />}{t.type}</span></td><td className="font-bold">{t.quantity}</td><td>{t.previousStock === null || t.newStock === null ? <span className="text-[var(--muted-foreground)]">Recorded</span> : <><span className="text-[var(--muted-foreground)]">{t.previousStock}</span> <span aria-hidden="true">→</span> <strong>{t.newStock}</strong></>}</td>{!compact && <td>{t.user}</td>}<td className="text-[var(--muted-foreground)]">{formatDate(t.createdAt)}</td></tr>)}</tbody></table>; }
+function ReceiptActivityTable({ receipts }: { receipts: ReceiptActivity[] }) {
+  return <table className="data-table min-w-[760px]"><thead><tr><th>Receipt</th><th>Products</th><th>Type</th><th>Quantity</th><th>User</th><th>Date</th></tr></thead><tbody>{receipts.map((receipt) => {
+    const productNames = receipt.transactions.map((transaction) => transaction.productName);
+    return <tr key={receipt.id}><td className="font-semibold">{receipt.reference}</td><td><p className="font-semibold">{receipt.productCount} product{receipt.productCount === 1 ? "" : "s"}</p><p className="mt-0.5 max-w-64 truncate text-xs text-[var(--muted-foreground)]" title={productNames.join(", ")}>{productNames.join(", ")}</p></td><td><span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold", receipt.type === "Stock In" ? "bg-emerald-50 text-emerald-800" : "bg-orange-50 text-orange-800")}>{receipt.type === "Stock In" ? <ArrowDown size={13} /> : <ArrowUp size={13} />}{receipt.type === "Stock In" ? "Stock received" : "Sale"}</span></td><td className="font-bold">{receipt.totalQuantity}</td><td>{receipt.user}</td><td className="text-[var(--muted-foreground)]">{formatDate(receipt.createdAt)}</td></tr>;
+  })}</tbody></table>;
+}
 
 function ReportsView({ notify }: { notify: (message: string) => void }) {
   const { products, transactions } = useInventory(); const stockIn = transactions.filter((t) => t.type === "Stock In").reduce((s, t) => s + t.quantity, 0); const stockOut = transactions.filter((t) => t.type === "Stock Out").reduce((s, t) => s + t.quantity, 0);

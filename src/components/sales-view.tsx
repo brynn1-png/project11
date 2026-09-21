@@ -18,6 +18,7 @@ import { SaleReceiptDetails, SaleReceiptPrintSheet } from "@/components/sale-rec
 import { useBarcodeScannerCapture } from "@/hooks/use-barcode-scanner-capture";
 import { processProductBarcode, updateCartQuantity, type CartLine, type SalesScanMode } from "@/lib/sales-cart";
 import type { Product } from "@/lib/types";
+import { formatQuantity } from "@/lib/units";
 
 function peso(value: number) {
   return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(value);
@@ -27,7 +28,9 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
   const { products, dataSource } = useInventory();
   const router = useRouter();
   const barcodeRef = useRef<HTMLInputElement>(null);
+  const quantityShortcutRef = useRef<HTMLInputElement>(null);
   const cartRef = useRef<CartLine[]>([]);
+  const lastScannedProductIdRef = useRef<string | null>(null);
   const [barcode, setBarcode] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [notes, setNotes] = useState("");
@@ -38,6 +41,9 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
   const [priceProduct, setPriceProduct] = useState<Product | null>(null);
   const [lastSale, setLastSale] = useState<ConfirmedSaleReceipt | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [manualEntryOpen, setManualEntryOpen] = useState(false);
+  const [quantityShortcutProductId, setQuantityShortcutProductId] = useState<string | null>(null);
+  const [quantityDraft, setQuantityDraft] = useState("");
   const [online, setOnline] = useState(true);
   const [saleKey, setSaleKey] = useState(() => crypto.randomUUID());
   const [isPending, startTransition] = useTransition();
@@ -60,7 +66,6 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
       setPriceProduct(null);
       setBarcode("");
       setMessage("");
-      focusBarcode();
     }, 15000);
     return () => window.clearTimeout(timer);
   }, [priceProduct, scanMode]);
@@ -70,6 +75,9 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
   const cashValue = cashReceived === "" ? 0 : Number(cashReceived);
   const paymentReady = Number.isFinite(cashValue) && cashValue >= total && total > 0;
   const changeDue = paymentReady ? Math.round((cashValue - total) * 100) / 100 : 0;
+  const quantityShortcutLine = quantityShortcutProductId
+    ? cart.find((line) => line.product.databaseId === quantityShortcutProductId) ?? null
+    : null;
 
   function commitCart(next: CartLine[]) {
     cartRef.current = next;
@@ -84,35 +92,75 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
     }, 0);
   }
 
-  function handleBarcode(value: string) {
+  function restoreScanFocus() {
+    window.setTimeout(() => {
+      if (barcodeRef.current) return barcodeRef.current.focus();
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    }, 0);
+  }
+
+  function handleBarcode(value: string, source: "scan" | "manual" = "scan") {
     const result = processProductBarcode(products, cartRef.current, value, scanMode);
     if (!result.ok) {
-      setBarcode(value.trim());
+      setBarcode(source === "manual" ? value.trim() : "");
       setScanStatus("");
       setPriceProduct(null);
       setMessage(result.message);
-      focusBarcode(true);
+      if (source === "manual") focusBarcode(true);
       return;
     }
 
     if (result.mode === "price") {
       setPriceProduct(result.product);
       setBarcode("");
+      setManualEntryOpen(false);
       setScanStatus("");
       setMessage("");
-      focusBarcode();
       return;
     }
 
     commitCart(result.cart);
+    lastScannedProductIdRef.current = result.product.databaseId;
     setBarcode("");
     setMessage("");
     setLastSale(null);
+    setManualEntryOpen(false);
+    setQuantityShortcutProductId(null);
+    setQuantityDraft("");
     setScanStatus(`Added ${result.product.name} — ${result.quantity} in current sale.`);
-    focusBarcode();
   }
 
   useBarcodeScannerCapture(handleBarcode, !lastSale);
+
+  useEffect(() => {
+    if (scanMode !== "sale" || lastSale) return;
+
+    function startQuantityShortcut(event: KeyboardEvent) {
+      if (event.key !== "*" || event.altKey || event.ctrlKey || event.metaKey || event.repeat) return;
+
+      const target = event.target;
+      const targetIsEditable = target instanceof HTMLElement
+        && (target.isContentEditable || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target instanceof HTMLInputElement);
+      if (targetIsEditable && target !== barcodeRef.current) return;
+
+      event.preventDefault();
+      const productId = lastScannedProductIdRef.current;
+      const line = productId ? cartRef.current.find((item) => item.product.databaseId === productId) : null;
+      if (!line) {
+        setScanStatus("Scan a product before using the quantity shortcut.");
+        return;
+      }
+
+      setMessage("");
+      setScanStatus("");
+      setQuantityShortcutProductId(line.product.databaseId);
+      setQuantityDraft("");
+      window.setTimeout(() => quantityShortcutRef.current?.focus(), 0);
+    }
+
+    window.addEventListener("keydown", startQuantityShortcut);
+    return () => window.removeEventListener("keydown", startQuantityShortcut);
+  }, [lastSale, scanMode]);
 
   function changeScanMode(value: string) {
     if (value !== "sale" && value !== "price") return;
@@ -122,7 +170,9 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
     setScanStatus("");
     setPriceProduct(null);
     setCameraOpen(false);
-    focusBarcode();
+    setManualEntryOpen(false);
+    setQuantityShortcutProductId(null);
+    setQuantityDraft("");
   }
 
   function finishPriceCheck() {
@@ -130,15 +180,60 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
     setPriceProduct(null);
     setBarcode("");
     setMessage("");
-    focusBarcode();
+  }
+
+  function openManualEntry() {
+    setBarcode("");
+    setMessage("");
+    setManualEntryOpen(true);
+    window.setTimeout(() => barcodeRef.current?.focus(), 0);
+  }
+
+  function closeManualEntry() {
+    setBarcode("");
+    setMessage("");
+    setManualEntryOpen(false);
   }
 
   function changeQuantity(productId: string, next: number) {
     const result = updateCartQuantity(cartRef.current, productId, next);
     if (!result.ok) return setMessage(result.message);
     commitCart(result.cart);
+    if (result.quantity === 0 && lastScannedProductIdRef.current === productId) lastScannedProductIdRef.current = null;
     setMessage("");
     setScanStatus(result.quantity === 0 ? "Product removed from the current sale." : "Quantity updated.");
+  }
+
+  function cancelQuantityShortcut() {
+    setQuantityShortcutProductId(null);
+    setQuantityDraft("");
+    restoreScanFocus();
+  }
+
+  function applyQuantityShortcut(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!quantityShortcutLine) return cancelQuantityShortcut();
+
+    const quantity = Number(quantityDraft);
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      setMessage("Enter a whole-number quantity of at least 1.");
+      window.setTimeout(() => quantityShortcutRef.current?.select(), 0);
+      return;
+    }
+
+    const result = updateCartQuantity(cartRef.current, quantityShortcutLine.product.databaseId, quantity);
+    if (!result.ok) {
+      setMessage(result.message);
+      window.setTimeout(() => quantityShortcutRef.current?.select(), 0);
+      return;
+    }
+
+    commitCart(result.cart);
+    setQuantityShortcutProductId(null);
+    setQuantityDraft("");
+    setMessage("");
+    setScanStatus(`Set ${quantityShortcutLine.product.name} quantity to ${result.quantity}.`);
+    restoreScanFocus();
   }
 
   function confirmSale() {
@@ -157,7 +252,11 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
       if (!result.ok) return setMessage(result.message);
       setLastSale(result.receipt);
       cartRef.current = [];
+      lastScannedProductIdRef.current = null;
       setCart([]);
+      setManualEntryOpen(false);
+      setQuantityShortcutProductId(null);
+      setQuantityDraft("");
       setNotes("");
       setSaleKey(crypto.randomUUID());
       notify(`Sale #${result.receipt.saleNumber} confirmed for ${peso(result.receipt.totalAmount)}.`);
@@ -167,7 +266,10 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
 
   function startNextSale() {
     setLastSale(null); setCashReceived(""); setMessage(""); setScanStatus("");
-    setSaleKey(crypto.randomUUID()); focusBarcode();
+    lastScannedProductIdRef.current = null;
+    setManualEntryOpen(false);
+    setQuantityShortcutProductId(null); setQuantityDraft("");
+    setSaleKey(crypto.randomUUID());
   }
 
   if (lastSale) return <div className="mx-auto grid max-w-2xl gap-5"><section className="panel p-5 sm:p-6"><div className="mb-5 flex items-start gap-3 rounded-xl bg-emerald-50 p-4 text-emerald-900"><CheckCircle className="mt-0.5 shrink-0" size={22} weight="fill" /><div><h2 className="font-bold">Sale confirmed</h2><p className="mt-1 text-sm">Give the customer {peso(lastSale.changeDue)} change, then print or save their receipt.</p></div></div><SaleReceiptDetails receipt={lastSale} /><div className="mt-6 flex flex-col-reverse gap-2 border-t border-[var(--border)] pt-5 sm:flex-row sm:justify-end"><Button variant="secondary" onClick={startNextSale}>Start next sale</Button><Button onClick={() => window.print()}><Printer size={17} />Print / Save as PDF</Button></div></section><SaleReceiptPrintSheet receipt={lastSale} /></div>;
@@ -178,10 +280,7 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
         <Tabs value={scanMode} onValueChange={changeScanMode}>
           <Card className="border-[var(--border)] bg-[var(--surface)] shadow-none">
             <CardHeader className="flex-row items-start justify-between gap-4">
-              <div className="flex min-w-0 flex-col gap-1.5">
-                <CardTitle>{scanMode === "sale" ? "Scan a product" : "Check a product price"}</CardTitle>
-                <CardDescription>{scanMode === "sale" ? "Scan to add one item. Scan again or edit its quantity in the current sale." : "Look up a selling price without changing the current sale or inventory."}</CardDescription>
-              </div>
+              <CardTitle>{scanMode === "sale" ? "Scan a product" : "Check a product price"}</CardTitle>
               <Badge variant={online && dataSource === "live" ? "default" : "destructive"} className="shrink-0">
                 {online && dataSource === "live" ? <WifiHigh weight="bold" /> : <WifiSlash weight="bold" />}
                 {!online ? "Offline" : dataSource === "cached" ? "Cached data" : dataSource === "live" ? "Online" : "Unavailable"}
@@ -194,22 +293,54 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
               </TabsList>
 
               <TabsContent value="sale" className="mt-5 flex flex-col gap-5">
-                <form className="flex flex-col gap-3 sm:flex-row" onSubmit={(event) => { event.preventDefault(); handleBarcode(barcode); }}>
-                  <div className="relative flex-1">
-                    <Barcode className="absolute left-3.5 top-3.5 text-[var(--muted-foreground)]" size={18} />
-                    <Input ref={barcodeRef} className="pl-10" value={barcode} onChange={(event) => setBarcode(event.target.value)} placeholder="Scan or enter barcode" aria-label="Product barcode" autoFocus />
-                  </div>
-                  <Button type="submit"><Plus data-icon="inline-start" />Add to sale</Button>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  {!manualEntryOpen && <Button type="button" variant="secondary" onClick={openManualEntry}><Barcode data-icon="inline-start" />Enter barcode manually</Button>}
                   <Button type="button" variant="secondary" onClick={() => setCameraOpen((current) => !current)}>
                     <Camera data-icon="inline-start" />{cameraOpen ? "Hide camera" : "Use camera"}
                   </Button>
-                </form>
-                <p className="text-xs leading-relaxed text-[var(--muted-foreground)]">
-                  Scan anywhere: configure the USB scanner to send <kbd className="rounded border border-[var(--border)] bg-[var(--muted)] px-1.5 py-0.5 font-mono text-[0.6875rem] text-[var(--foreground)]">F9</kbd> before the barcode and <kbd className="rounded border border-[var(--border)] bg-[var(--muted)] px-1.5 py-0.5 font-mono text-[0.6875rem] text-[var(--foreground)]">Enter</kbd> after it.
-                </p>
+                </div>
+                {manualEntryOpen && (
+                  <form className="flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={(event) => { event.preventDefault(); handleBarcode(barcode, "manual"); }}>
+                    <Field className="flex-1" data-invalid={Boolean(message)}>
+                      <FieldLabel htmlFor="sale-manual-barcode">Barcode</FieldLabel>
+                      <Input ref={barcodeRef} id="sale-manual-barcode" value={barcode} onChange={(event) => setBarcode(event.target.value)} placeholder="Enter barcode" autoComplete="off" aria-invalid={Boolean(message)} />
+                    </Field>
+                    <Button type="submit"><Plus data-icon="inline-start" />Add to sale</Button>
+                    <Button type="button" variant="ghost" onClick={closeManualEntry}>Cancel</Button>
+                  </form>
+                )}
+                {quantityShortcutLine && (
+                  <form className="flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--muted)] p-3 sm:flex-row sm:items-end" onSubmit={applyQuantityShortcut} aria-label={`Set quantity for ${quantityShortcutLine.product.name}`}>
+                    <div className="min-w-0 flex-1 self-center">
+                      <p className="text-sm font-semibold">Set quantity for {quantityShortcutLine.product.name}</p>
+                      <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{formatQuantity(quantityShortcutLine.product.stock, quantityShortcutLine.product.unit)} available</p>
+                    </div>
+                    <Field className="sm:w-28">
+                      <FieldLabel htmlFor="quantity-shortcut">Quantity</FieldLabel>
+                      <Input
+                        ref={quantityShortcutRef}
+                        id="quantity-shortcut"
+                        type="number"
+                        inputMode="numeric"
+                        min="1"
+                        max={quantityShortcutLine.product.stock}
+                        step="1"
+                        value={quantityDraft}
+                        onChange={(event) => setQuantityDraft(event.target.value)}
+                        onKeyDown={(event) => { if (event.key === "Escape") cancelQuantityShortcut(); }}
+                        aria-describedby="quantity-shortcut-help"
+                      />
+                    </Field>
+                    <div className="flex gap-2">
+                      <Button type="submit" className="flex-1 sm:flex-none">Apply quantity</Button>
+                      <Button type="button" variant="ghost" className="flex-1 sm:flex-none" onClick={cancelQuantityShortcut}>Cancel</Button>
+                    </div>
+                    <span id="quantity-shortcut-help" className="sr-only">Enter a whole number no greater than available stock, then press Enter.</span>
+                  </form>
+                )}
                 {cameraOpen && <div className="rounded-2xl border border-[var(--border)] p-4"><CameraScanner onDetected={handleBarcode} /></div>}
                 {message && <Alert variant="destructive"><WarningCircle /><AlertTitle>Sale needs attention</AlertTitle><AlertDescription>{message}</AlertDescription></Alert>}
-                {!message && <div className="flex min-h-6 items-center gap-2 text-sm" role="status" aria-live="polite">{scanStatus ? <><CheckCircle className="shrink-0 text-[var(--accent)]" size={18} weight="fill" /><span className="font-medium">{scanStatus}</span></> : <><Barcode className="shrink-0 text-[var(--muted-foreground)]" size={18} /><span className="text-[var(--muted-foreground)]">Ready for the next barcode.</span></>}</div>}
+                {!message && <div className="flex min-h-6 items-center gap-2 text-sm" role="status" aria-live="polite">{scanStatus ? <><CheckCircle className="shrink-0 text-[var(--accent)]" size={18} weight="fill" /><span className="font-medium">{scanStatus}</span></> : <><span className="size-2 shrink-0 rounded-full bg-emerald-600" aria-hidden="true" /><span className="font-medium text-[var(--muted-foreground)]">Ready to scan</span></>}</div>}
               </TabsContent>
 
               <TabsContent value="price" className="mt-5 flex flex-col gap-5">
@@ -218,23 +349,29 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
                   <AlertTitle>Price check mode</AlertTitle>
                   <AlertDescription>Scanned products will not be added to the current sale.</AlertDescription>
                 </Alert>
-                <form className="flex flex-col gap-3 sm:flex-row" onSubmit={(event) => { event.preventDefault(); handleBarcode(barcode); }}>
-                  <div className="relative flex-1">
-                    <Barcode className="absolute left-3.5 top-3.5 text-[var(--muted-foreground)]" size={18} />
-                    <Input ref={barcodeRef} className="pl-10" value={barcode} onChange={(event) => setBarcode(event.target.value)} placeholder="Scan or enter barcode" aria-label="Product barcode for price check" autoFocus />
-                  </div>
-                  <Button type="submit"><MagnifyingGlass data-icon="inline-start" />Check price</Button>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  {!manualEntryOpen && <Button type="button" variant="secondary" onClick={openManualEntry}><Barcode data-icon="inline-start" />Enter barcode manually</Button>}
                   <Button type="button" variant="secondary" onClick={() => setCameraOpen((current) => !current)}>
                     <Camera data-icon="inline-start" />{cameraOpen ? "Hide camera" : "Use camera"}
                   </Button>
-                </form>
+                </div>
+                {manualEntryOpen && (
+                  <form className="flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={(event) => { event.preventDefault(); handleBarcode(barcode, "manual"); }}>
+                    <Field className="flex-1" data-invalid={Boolean(message)}>
+                      <FieldLabel htmlFor="price-manual-barcode">Barcode</FieldLabel>
+                      <Input ref={barcodeRef} id="price-manual-barcode" value={barcode} onChange={(event) => setBarcode(event.target.value)} placeholder="Enter barcode" autoComplete="off" aria-invalid={Boolean(message)} />
+                    </Field>
+                    <Button type="submit"><MagnifyingGlass data-icon="inline-start" />Check price</Button>
+                    <Button type="button" variant="ghost" onClick={closeManualEntry}>Cancel</Button>
+                  </form>
+                )}
                 {cameraOpen && <div className="rounded-2xl border border-[var(--border)] p-4"><CameraScanner onDetected={handleBarcode} /></div>}
                 {message && <Alert variant="destructive"><WarningCircle /><AlertTitle>Price unavailable</AlertTitle><AlertDescription>{message}</AlertDescription></Alert>}
                 {!message && priceProduct && <section className="rounded-2xl bg-[var(--accent-soft)] p-5 sm:p-6" role="status" aria-live="polite">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <h3 className="text-lg font-bold">{priceProduct.name}</h3>
-                      <p className="mt-1 text-sm text-[var(--muted-foreground)]">{priceProduct.barcode}{priceProduct.description ? ` · ${priceProduct.description}` : ""}</p>
+                      {priceProduct.description && <p className="mt-1 text-sm text-[var(--muted-foreground)]">{priceProduct.description}</p>}
                     </div>
                     <Badge variant={priceProduct.stock > 0 ? "default" : "destructive"} className="self-start">{priceProduct.stock > 0 ? "Available" : "Out of stock"}</Badge>
                   </div>
@@ -258,12 +395,12 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
           <ShoppingCart size={22} className="text-[var(--accent)]" />
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          {cart.length === 0 ? <p className="py-10 text-center text-sm text-[var(--muted-foreground)]">Scanned products will collect here until you confirm the sale.</p> : cart.map((line) => (
+          {cart.length === 0 ? <p className="py-10 text-center text-sm text-[var(--muted-foreground)]">No products added.</p> : cart.map((line) => (
             <div key={line.product.databaseId} className="flex items-center gap-3 rounded-xl border border-[var(--border)] p-3">
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{line.product.name}</p><p className="mt-1 text-xs text-[var(--muted-foreground)]">{peso(line.product.price * line.quantity)}</p></div>
               <div className="flex items-center gap-1">
                 <Button type="button" variant="ghost" size="icon" onClick={() => changeQuantity(line.product.databaseId, line.quantity - 1)} aria-label={`Decrease ${line.product.name} quantity`}><Minus /></Button>
-                <Input className="w-16 text-center" type="number" min="1" max={line.product.stock} value={line.quantity} onChange={(event) => changeQuantity(line.product.databaseId, Number(event.target.value))} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); focusBarcode(); } }} aria-label={`${line.product.name} quantity`} />
+                <Input className="w-16 text-center" type="number" min="1" max={line.product.stock} value={line.quantity} onChange={(event) => changeQuantity(line.product.databaseId, Number(event.target.value))} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); restoreScanFocus(); } }} aria-label={`${line.product.name} quantity`} />
                 <Button type="button" variant="ghost" size="icon" onClick={() => changeQuantity(line.product.databaseId, line.quantity + 1)} disabled={line.quantity >= line.product.stock} aria-label={`Increase ${line.product.name} quantity`}><Plus /></Button>
                 <Button type="button" variant="ghost" size="icon" onClick={() => changeQuantity(line.product.databaseId, 0)} aria-label={`Remove ${line.product.name}`}><Trash /></Button>
               </div>
@@ -271,7 +408,7 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
           ))}
           <Field>
             <FieldLabel htmlFor="sale-notes">Sale notes</FieldLabel>
-            <Input id="sale-notes" value={notes} maxLength={500} onChange={(event) => setNotes(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); focusBarcode(); } }} placeholder="Optional reference or note" />
+            <Input id="sale-notes" value={notes} maxLength={500} onChange={(event) => setNotes(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); restoreScanFocus(); } }} placeholder="Optional reference or note" />
           </Field>
         </CardContent>
         <Separator />

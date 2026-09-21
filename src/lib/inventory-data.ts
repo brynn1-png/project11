@@ -24,6 +24,8 @@ type CatalogRow = {
 
 type ActivityRow = {
   activity_id: string;
+  activity_group_id?: string;
+  reference_number?: string;
   product_id: string;
   product_code: string;
   product_name: string;
@@ -92,6 +94,8 @@ export async function getInventorySnapshot(role: AppRole): Promise<InventorySnap
 
   const transactions = ((activityResult.data ?? []) as ActivityRow[]).map((row) => ({
     id: row.activity_id,
+    groupId: row.activity_group_id,
+    reference: row.reference_number,
     productId: row.product_code,
     productName: row.product_name,
     barcode: row.barcode,

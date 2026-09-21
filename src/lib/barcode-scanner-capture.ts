@@ -1,7 +1,9 @@
+import { BARCODE_MIN_LENGTH } from "@/lib/barcode-values";
+
 export const SCANNER_PREFIX_KEY = "F9";
 export const SCANNER_MAX_CHARACTER_GAP_MS = 80;
 export const SCANNER_SESSION_TIMEOUT_MS = 1200;
-export const SCANNER_MIN_LENGTH = 4;
+export const SCANNER_MIN_LENGTH = BARCODE_MIN_LENGTH;
 
 export type ScannerCaptureState = {
   mode: "idle" | "prefixed" | "timed";
@@ -30,9 +32,22 @@ export const EMPTY_SCANNER_CAPTURE: ScannerCaptureState = {
   lastKeyAt: 0,
 };
 
+const MODIFIER_ONLY_KEYS = new Set([
+  "Shift",
+  "Control",
+  "Alt",
+  "AltGraph",
+  "Meta",
+  "CapsLock",
+  "NumLock",
+  "ScrollLock",
+]);
+
 function isBarcodeCharacter(event: ScannerKey) {
+  const codePoint = event.key.codePointAt(0) ?? 0;
   return event.key.length === 1
-    && !/\s/.test(event.key)
+    && codePoint >= 0x20
+    && codePoint <= 0x7e
     && !event.altKey
     && !event.ctrlKey
     && !event.metaKey;
@@ -44,6 +59,10 @@ export function advanceScannerCapture(state: ScannerCaptureState, event: Scanner
       state: { mode: "prefixed", buffer: "", lastKeyAt: event.occurredAt },
       preventDefault: true,
     };
+  }
+
+  if (MODIFIER_ONLY_KEYS.has(event.key)) {
+    return { state, preventDefault: false };
   }
 
   if (state.mode === "prefixed") {
