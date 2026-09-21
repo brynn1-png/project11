@@ -7,6 +7,7 @@ export type Permission =
   | "products:view"
   | "products:manage"
   | "products:archive"
+  | "products:delete"
   | "stock:receive"
   | "sales:record"
   | "sales:verify"
@@ -17,7 +18,7 @@ export type Permission =
 
 const ROLE_PERMISSIONS: Record<AppRole, ReadonlySet<Permission>> = {
   administrator: new Set([
-    "dashboard:view", "products:view", "products:manage", "products:archive",
+    "dashboard:view", "products:view", "products:manage", "products:archive", "products:delete",
     "stock:receive", "sales:record", "sales:verify", "adjustments:manage", "transactions:view_all",
     "reports:view_costs", "users:manage",
   ]),

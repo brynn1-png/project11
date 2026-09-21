@@ -71,8 +71,12 @@ function errorMessage(error: { message: string }, fallback: string) {
     return "That barcode is already registered or was previously used.";
   }
   if (error.message.includes("batch_number")) return "That batch or lot number already exists for this product.";
-  if (error.message.includes("Manager access") || error.message.includes("not allowed")) return error.message;
+  if (error.message.includes("Manager access") || error.message.includes("Administrator access") || error.message.includes("not allowed")) return error.message;
+  if (error.message.includes("permanently deleted") || error.message.includes("operational history")) return error.message;
+  if (error.message.includes("completed sales") || error.message.includes("receipt history")) return error.message;
+  if (error.message.includes("product code exactly") || error.message.includes("Archived product was not found")) return error.message;
   if (error.message.includes("zero stock") || error.message.includes("pending resellable returns")) return error.message;
+  if (error.message.includes("Confirm removal of the remaining stock")) return error.message;
   if (error.message.includes("expiry") || error.message.includes("Expired") || error.message.includes("Manufactured")) return error.message;
   return fallback;
 }
@@ -273,7 +277,7 @@ export async function listArchivedInventoryProducts(): Promise<{ ok: true; produ
   };
 }
 
-export async function archiveInventoryProduct(productId: string, reason: string) {
+export async function archiveInventoryProduct(productId: string, reason: string, confirmStockRemoval = false) {
   const user = await getCurrentUser();
   if (!user || !hasPermission(user.role, "products:archive")) {
     return { ok: false as const, message: "Manager access is required to archive products." };
@@ -283,8 +287,12 @@ export async function archiveInventoryProduct(productId: string, reason: string)
   if (!parsed.success) return { ok: false as const, message: "Product identifier is invalid." };
   if (!parsedReason.success) return { ok: false as const, message: parsedReason.error.issues[0]?.message ?? "Enter an archive reason." };
   const supabase = await createClient();
-  const { error } = await supabase.rpc("archive_inventory_product", { p_product_id: parsed.data, p_reason: parsedReason.data });
-  if (error) return { ok: false as const, message: errorMessage(error, error.message.includes("zero stock") ? error.message : "The product could not be archived.") };
+  const { error } = await supabase.rpc("archive_inventory_product", {
+    p_product_id: parsed.data,
+    p_reason: parsedReason.data,
+    p_confirm_stock_removal: confirmStockRemoval,
+  });
+  if (error) return { ok: false as const, message: errorMessage(error, "The product could not be archived.") };
   revalidatePath("/");
   return { ok: true as const };
 }
@@ -299,6 +307,25 @@ export async function restoreInventoryProduct(productId: string) {
   const supabase = await createClient();
   const { error } = await supabase.rpc("restore_inventory_product", { p_product_id: parsed.data });
   if (error) return { ok: false as const, message: errorMessage(error, "The product could not be restored.") };
+  revalidatePath("/");
+  return { ok: true as const };
+}
+
+export async function permanentlyDeleteArchivedProduct(productId: string, confirmation: string) {
+  const user = await getCurrentUser();
+  if (!user || !hasPermission(user.role, "products:delete")) {
+    return { ok: false as const, message: "Administrator access is required to permanently delete products." };
+  }
+  const parsed = z.uuid().safeParse(productId);
+  const parsedConfirmation = z.string().trim().min(3).max(32).safeParse(confirmation);
+  if (!parsed.success) return { ok: false as const, message: "Product identifier is invalid." };
+  if (!parsedConfirmation.success) return { ok: false as const, message: "Enter the product code to confirm permanent deletion." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("delete_archived_inventory_product", {
+    p_product_id: parsed.data,
+    p_confirmation: parsedConfirmation.data,
+  });
+  if (error) return { ok: false as const, message: errorMessage(error, "The archived product could not be permanently deleted.") };
   revalidatePath("/");
   return { ok: true as const };
 }

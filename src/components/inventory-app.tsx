@@ -200,7 +200,7 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
 
           <div key={view === "stock-in" ? `${view}:${receivingProductId ?? "none"}` : view} className="view-enter">
             {view === "dashboard" && <Dashboard canReceive={hasPermission(currentUser.role, "stock:receive")} onNavigate={navigate} />}
-            {view === "products" && <ProductManagementView startCreating={startProductRegistration} canManage={hasPermission(currentUser.role, "products:manage")} canArchive={hasPermission(currentUser.role, "products:archive")} canReceive={hasPermission(currentUser.role, "stock:receive")} notify={notify} onReceive={(productId) => { setReceivingProductId(productId); setView("stock-in"); }} />}
+            {view === "products" && <ProductManagementView startCreating={startProductRegistration} canManage={hasPermission(currentUser.role, "products:manage")} canArchive={hasPermission(currentUser.role, "products:archive")} canPermanentlyDelete={hasPermission(currentUser.role, "products:delete")} canReceive={hasPermission(currentUser.role, "stock:receive")} notify={notify} onReceive={(productId) => { setReceivingProductId(productId); setView("stock-in"); }} />}
             {view === "sales" && <SalesView notify={notify} />}
             {view === "returns" && <ReturnsView notify={notify} />}
             {view === "stock-in" && <StockInView initialProductId={receivingProductId} canRegisterProduct={hasPermission(currentUser.role, "products:manage")} showMargin={hasPermission(currentUser.role, "reports:view_costs")} notify={notify} onRegisterProduct={() => { setStartProductRegistration(true); setView("products"); }} />}

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, ArrowCounterClockwise, Barcode, MagnifyingGlass, Package, PencilSimple, Plus, Printer, Warning } from "@phosphor-icons/react";
+import { Archive, ArrowCounterClockwise, Barcode, MagnifyingGlass, Package, PencilSimple, Plus, Printer, Trash, Warning } from "@phosphor-icons/react";
 import {
   archiveInventoryProduct,
   createInventoryCategory,
@@ -10,6 +10,7 @@ import {
   createInventoryProductWithInitialStock,
   listArchivedInventoryProducts,
   listInventoryCategories,
+  permanentlyDeleteArchivedProduct,
   restoreInventoryProduct,
   updateInventoryCategory,
   updateInventoryProduct,
@@ -21,6 +22,8 @@ import { BarcodeGenerationPreview, BarcodePrintPanel } from "@/components/barcod
 import { TablePagination } from "@/components/table-pagination";
 import { useInventory } from "@/components/inventory-provider";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -42,7 +45,7 @@ function formFromProduct(product: Product): ProductForm {
   return { name: product.name, description: product.description ?? "", categoryId: product.categoryId, stockUnit: product.unit, sellingPrice: String(product.price), minimumStock: String(product.minimumStock), expiryTracking: product.expiryTracking, barcodeMode: "manufacturer", barcode: product.barcode };
 }
 
-export function ProductManagementView({ startCreating, canManage, canArchive, canReceive, notify, onReceive }: { startCreating: boolean; canManage: boolean; canArchive: boolean; canReceive: boolean; notify: (message: string) => void; onReceive: (productId: string) => void }) {
+export function ProductManagementView({ startCreating, canManage, canArchive, canPermanentlyDelete, canReceive, notify, onReceive }: { startCreating: boolean; canManage: boolean; canArchive: boolean; canPermanentlyDelete: boolean; canReceive: boolean; notify: (message: string) => void; onReceive: (productId: string) => void }) {
   const { products } = useInventory();
   const router = useRouter();
   const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -55,6 +58,9 @@ export function ProductManagementView({ startCreating, canManage, canArchive, ca
   const [archivedProducts, setArchivedProducts] = useState<ArchivedProduct[]>([]);
   const [archivedLoading, setArchivedLoading] = useState(false);
   const [archivedError, setArchivedError] = useState("");
+  const [deleteProduct, setDeleteProduct] = useState<ArchivedProduct | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const [editing, setEditing] = useState<Product | null | "new">(startCreating && canManage ? "new" : null);
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [formError, setFormError] = useState("");
@@ -66,6 +72,7 @@ export function ProductManagementView({ startCreating, canManage, canArchive, ca
   const [printProduct, setPrintProduct] = useState<SavedProduct | null>(null);
   const [printProductHasOpeningStock, setPrintProductHasOpeningStock] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
+  const [confirmArchiveStockRemoval, setConfirmArchiveStockRemoval] = useState(false);
   const [archiveReason, setArchiveReason] = useState("");
   const [addInitialStock, setAddInitialStock] = useState(false);
   const [initialStock, setInitialStock] = useState({ quantity: "", unitCost: "", expiresAt: "" });
@@ -100,7 +107,7 @@ export function ProductManagementView({ startCreating, canManage, canArchive, ca
   const archivedPage = useMemo(() => paginateItems(shownArchived, page, pageSize), [page, pageSize, shownArchived]);
 
   function beginCreate() {
-    setEditing("new"); setForm({ ...emptyForm, categoryId: categories[0]?.id ?? "" }); setFormError(""); setConfirmArchive(false); setArchiveReason(""); setAddInitialStock(false); setInitialStock({ quantity: "", unitCost: "", expiresAt: "" });
+    setEditing("new"); setForm({ ...emptyForm, categoryId: categories[0]?.id ?? "" }); setFormError(""); setConfirmArchive(false); setConfirmArchiveStockRemoval(false); setArchiveReason(""); setAddInitialStock(false); setInitialStock({ quantity: "", unitCost: "", expiresAt: "" });
   }
   function loadArchivedProducts() {
     setArchivedLoading(true); setArchivedError("");
@@ -111,7 +118,7 @@ export function ProductManagementView({ startCreating, canManage, canArchive, ca
     });
   }
   function openArchivedProducts() { setCatalogMode("archived"); setPage(1); loadArchivedProducts(); }
-  function beginEdit(product: Product) { setEditing(product); setForm(formFromProduct(product)); setFormError(""); setConfirmArchive(false); setArchiveReason(""); setAddInitialStock(false); setInitialStock({ quantity: "", unitCost: "", expiresAt: "" }); }
+  function beginEdit(product: Product) { setEditing(product); setForm(formFromProduct(product)); setFormError(""); setConfirmArchive(false); setConfirmArchiveStockRemoval(false); setArchiveReason(""); setAddInitialStock(false); setInitialStock({ quantity: "", unitCost: "", expiresAt: "" }); }
   function set<K extends keyof ProductForm>(key: K, value: ProductForm[K]) { setForm((current) => ({ ...current, [key]: value })); }
 
   function setExpiryTracking(value: ProductForm["expiryTracking"]) {
@@ -187,9 +194,9 @@ export function ProductManagementView({ startCreating, canManage, canArchive, ca
   function archive() {
     if (!editing || editing === "new") return;
     startTransition(async () => {
-      const result = await archiveInventoryProduct(editing.databaseId, archiveReason);
+      const result = await archiveInventoryProduct(editing.databaseId, archiveReason, confirmArchiveStockRemoval);
       if (!result.ok) { setFormError(result.message); return; }
-      notify(`${editing.name} was archived.`); setEditing(null); setConfirmArchive(false); setArchiveReason(""); setCatalogMode("archived"); loadArchivedProducts(); router.refresh();
+      notify(`${editing.name} was archived${editing.stock > 0 ? ` and ${formatQuantity(editing.stock, editing.unit)} was removed from stock` : ""}.`); setEditing(null); setConfirmArchive(false); setConfirmArchiveStockRemoval(false); setArchiveReason(""); setCatalogMode("archived"); loadArchivedProducts(); router.refresh();
     });
   }
 
@@ -200,6 +207,23 @@ export function ProductManagementView({ startCreating, canManage, canArchive, ca
       if (!result.ok) { setArchivedError(result.message); return; }
       setArchivedProducts((current) => current.filter((item) => item.databaseId !== product.databaseId));
       notify(`${product.name} was restored.`); router.refresh();
+    });
+  }
+
+  function closeDeleteDialog() {
+    if (isPending) return;
+    setDeleteProduct(null); setDeleteConfirmation(""); setDeleteError("");
+  }
+
+  function deleteArchivedProduct() {
+    if (!deleteProduct || deleteConfirmation.trim() !== deleteProduct.productCode) return;
+    setDeleteError("");
+    startTransition(async () => {
+      const result = await permanentlyDeleteArchivedProduct(deleteProduct.databaseId, deleteConfirmation);
+      if (!result.ok) { setDeleteError(result.message); return; }
+      setArchivedProducts((current) => current.filter((item) => item.databaseId !== deleteProduct.databaseId));
+      notify(`${deleteProduct.name} was permanently deleted.`);
+      setDeleteProduct(null); setDeleteConfirmation(""); router.refresh();
     });
   }
 
@@ -234,7 +258,7 @@ export function ProductManagementView({ startCreating, canManage, canArchive, ca
           {formError && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">{formError}</div>}
         </fieldset>
       </div>
-      <div className="flex flex-col gap-4 border-t border-[var(--border)] p-5 sm:p-6"><div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between"><div>{!isNew && canArchive && (!confirmArchive ? <Button type="button" variant="ghost" className="text-red-700" onClick={() => setConfirmArchive(true)}><Archive size={17} />Archive product</Button> : <div className="grid max-w-md gap-2"><label className="field-label mb-0" htmlFor="archive-reason">Why is this product being archived?</label><Input id="archive-reason" value={archiveReason} onChange={(event) => setArchiveReason(event.target.value)} placeholder="Example: Product discontinued" minLength={2} maxLength={160} required /><p className="text-xs text-[var(--muted-foreground)]">Products with remaining stock cannot be archived.</p><div className="flex gap-2"><Button type="button" variant="ghost" onClick={() => { setConfirmArchive(false); setArchiveReason(""); }}>Cancel archive</Button><Button type="button" variant="destructive" disabled={isPending || archiveReason.trim().length < 2} onClick={archive}>Confirm archive</Button></div></div>)}</div><div className="flex gap-2 self-end"><Button type="button" variant="secondary" onClick={() => setEditing(null)}>Cancel</Button><Button type="submit" disabled={isPending}>{isPending ? "Saving…" : isNew && addInitialStock ? "Register and add stock" : isNew ? "Register product" : "Save changes"}</Button></div></div></div>
+      <div className="flex flex-col gap-4 border-t border-[var(--border)] p-5 sm:p-6"><div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between"><div>{!isNew && canArchive && (!confirmArchive ? <Button type="button" variant="ghost" className="text-red-700" onClick={() => { setConfirmArchive(true); setFormError(""); }}><Archive size={17} />Archive product</Button> : <div className="grid max-w-lg gap-3"><label className="field-label mb-0" htmlFor="archive-reason">Why is this product being archived?</label><Input id="archive-reason" value={archiveReason} onChange={(event) => setArchiveReason(event.target.value)} placeholder="Example: Product discontinued" minLength={2} maxLength={160} required />{editing.stock > 0 && <Alert variant="destructive"><Warning aria-hidden="true" /><AlertTitle>{formatQuantity(editing.stock, editing.unit)} will be removed</AlertTitle><AlertDescription><p>Archiving will write off all remaining stock and set every batch to zero. The adjustment and previous transactions will remain in history.</p><label className="mt-3 flex cursor-pointer items-start gap-3" htmlFor="confirm-archive-stock-removal"><input id="confirm-archive-stock-removal" type="checkbox" className="mt-0.5 size-4 shrink-0 accent-[var(--destructive)]" checked={confirmArchiveStockRemoval} onChange={(event) => { setConfirmArchiveStockRemoval(event.target.checked); setFormError(""); }} /><span className="font-semibold">I understand that the remaining stock will be removed.</span></label></AlertDescription></Alert>}<div className="flex flex-wrap gap-2"><Button type="button" variant="ghost" onClick={() => { setConfirmArchive(false); setConfirmArchiveStockRemoval(false); setArchiveReason(""); setFormError(""); }}>Cancel archive</Button><Button type="button" variant="destructive" disabled={isPending || archiveReason.trim().length < 2 || (editing.stock > 0 && !confirmArchiveStockRemoval)} onClick={archive}>{isPending ? "Archiving…" : editing.stock > 0 ? "Remove stock and archive" : "Confirm archive"}</Button></div></div>)}</div><div className="flex gap-2 self-end"><Button type="button" variant="secondary" onClick={() => setEditing(null)}>Cancel</Button><Button type="submit" disabled={isPending}>{isPending ? "Saving…" : isNew && addInitialStock ? "Register and add stock" : isNew ? "Register product" : "Save changes"}</Button></div></div></div>
     </form>;
   }
 
@@ -246,18 +270,40 @@ export function ProductManagementView({ startCreating, canManage, canArchive, ca
   }
 
   return <div className="grid gap-5">
+    <Dialog open={deleteProduct !== null} onOpenChange={(open) => { if (!open) closeDeleteDialog(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Permanently delete {deleteProduct?.name}?</DialogTitle>
+          <DialogDescription>This cannot be undone. Deleting this product also removes its sale lines and related return records directly from the database.</DialogDescription>
+        </DialogHeader>
+        <Alert variant="destructive">
+          <Warning aria-hidden="true" />
+          <AlertTitle>Historical records will be rewritten</AlertTitle>
+          <AlertDescription>Receipt totals will be recalculated, receipts left with no items will be deleted, and related returns, batches, adjustments, costs, and barcode aliases will be removed.</AlertDescription>
+        </Alert>
+        <div>
+          <label className="field-label" htmlFor="delete-product-confirmation">Type <strong>{deleteProduct?.productCode}</strong> to confirm</label>
+          <Input id="delete-product-confirmation" autoComplete="off" value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} aria-invalid={Boolean(deleteError)} aria-describedby={deleteError ? "delete-product-error" : undefined} />
+          {deleteError && <p id="delete-product-error" role="alert" className="mt-2 text-sm font-medium text-red-700">{deleteError}</p>}
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="secondary" disabled={isPending} onClick={closeDeleteDialog}>Cancel</Button>
+          <Button type="button" variant="destructive" disabled={isPending || deleteConfirmation.trim() !== deleteProduct?.productCode} onClick={deleteArchivedProduct}>{isPending ? "Deleting…" : "Delete permanently"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     {printProduct && <BarcodePrintPanel product={printProduct} onClose={() => { setPrintProduct(null); setPrintProductHasOpeningStock(false); }} onReceive={canReceive && !printProductHasOpeningStock ? () => onReceive(printProduct.databaseId) : undefined} />}
     <div className="flex gap-2" role="tablist" aria-label="Product catalog"><button type="button" role="tab" aria-selected={catalogMode === "active"} onClick={() => { setCatalogMode("active"); setPage(1); }} className={`min-h-10 rounded-xl px-4 text-sm font-semibold ${catalogMode === "active" ? "bg-[#173b2d] text-white" : "border border-[var(--border)] bg-white text-[var(--muted-foreground)] hover:bg-[var(--muted)]"}`}>Active products</button><button type="button" role="tab" aria-selected={catalogMode === "archived"} onClick={openArchivedProducts} className={`min-h-10 rounded-xl px-4 text-sm font-semibold ${catalogMode === "archived" ? "bg-[#173b2d] text-white" : "border border-[var(--border)] bg-white text-[var(--muted-foreground)] hover:bg-[var(--muted)]"}`}>Archived products</button></div>
     <div className="flex flex-col gap-3 sm:flex-row"><div className="relative flex-1"><MagnifyingGlass className="absolute left-3.5 top-3.5 text-[var(--muted-foreground)]" size={18} /><Input className="pl-10" placeholder="Search product, code, or barcode" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} /></div><select className="select-field sm:w-52" value={category} onChange={(event) => { setCategory(event.target.value); setPage(1); }}><option>All categories</option>{categories.map((item) => <option key={item.id}>{item.name}</option>)}</select>{canManage && <><Button variant="secondary" onClick={openCategoryManager} disabled={categories.length === 0}>Manage categories</Button><Button onClick={beginCreate}><Plus size={17} />Add product</Button></>}</div>
     {categoryError && <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-900">{categoryError}</div>}
     {archivedError && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">{archivedError}</div>}
-    {catalogMode === "active" ? <div className="panel overflow-hidden">{shown.length > 0 ? <><div className="overflow-x-auto"><table className="data-table min-w-[960px]"><thead><tr><th>Product</th><th>Barcode</th><th>Category</th><th>Price</th><th>Quantity</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{activePage.items.map((product) => <tr key={product.id}><td><p className="font-semibold">{product.name}</p><p className="mt-0.5 max-w-72 truncate text-xs text-[var(--muted-foreground)]" title={product.description}>{product.id}{product.description ? ` · ${product.description}` : ""}</p></td><td className="font-mono text-xs">{product.barcode}</td><td>{product.category}</td><td>{peso(product.price)}</td><td><strong>{product.stock}</strong> <span className="text-xs text-[var(--muted-foreground)]">{pluralizeUnit(product.stock, product.unit)}</span></td><td><StatusBadge status={getStockStatus(product)} /></td><td><div className="flex justify-end gap-1"><Button size="sm" variant="ghost" onClick={() => setPrintProduct({ databaseId: product.databaseId, productCode: product.id, name: product.name, barcode: product.barcode })}><Printer size={16} />Print</Button>{canManage && <Button size="sm" variant="ghost" onClick={() => beginEdit(product)}><PencilSimple size={16} />Edit</Button>}{canReceive && <Button size="sm" variant="ghost" onClick={() => onReceive(product.databaseId)}><Plus size={16} />Receive</Button>}</div></td></tr>)}</tbody></table></div><TablePagination {...activePage} pageSize={pageSize} itemLabel="products" onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }} /></> : <div className="grid place-items-center px-5 py-14 text-center"><span className="grid size-12 place-items-center rounded-2xl bg-[var(--muted)] text-[var(--muted-foreground)]"><Package size={23} /></span><h3 className="mt-4 font-bold">{products.length === 0 ? "No products yet" : "No matching products"}</h3><p className="mt-1 max-w-sm text-sm text-[var(--muted-foreground)]">{products.length === 0 ? "Register the first product to begin receiving inventory." : "Try a different name, code, barcode, or category."}</p>{products.length === 0 && canManage && <Button className="mt-5" onClick={beginCreate}><Plus size={17} />Register first product</Button>}</div>}</div> : <ArchivedProductsPanel products={archivedPage.items} total={shownArchived.length} loading={archivedLoading} canRestore={canArchive} pending={isPending} onRestore={restore} pagination={<TablePagination {...archivedPage} pageSize={pageSize} itemLabel="archived products" onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }} />} />}
+    {catalogMode === "active" ? <div className="panel overflow-hidden">{shown.length > 0 ? <><div className="overflow-x-auto"><table className="data-table min-w-[960px]"><thead><tr><th>Product</th><th>Barcode</th><th>Category</th><th>Price</th><th>Quantity</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{activePage.items.map((product) => <tr key={product.id}><td><p className="font-semibold">{product.name}</p><p className="mt-0.5 max-w-72 truncate text-xs text-[var(--muted-foreground)]" title={product.description}>{product.id}{product.description ? ` · ${product.description}` : ""}</p></td><td className="font-mono text-xs">{product.barcode}</td><td>{product.category}</td><td>{peso(product.price)}</td><td><strong>{product.stock}</strong> <span className="text-xs text-[var(--muted-foreground)]">{pluralizeUnit(product.stock, product.unit)}</span></td><td><StatusBadge status={getStockStatus(product)} /></td><td><div className="flex justify-end gap-1"><Button size="sm" variant="ghost" onClick={() => setPrintProduct({ databaseId: product.databaseId, productCode: product.id, name: product.name, barcode: product.barcode })}><Printer size={16} />Print</Button>{canManage && <Button size="sm" variant="ghost" onClick={() => beginEdit(product)}><PencilSimple size={16} />Edit</Button>}{canReceive && <Button size="sm" variant="ghost" onClick={() => onReceive(product.databaseId)}><Plus size={16} />Receive</Button>}</div></td></tr>)}</tbody></table></div><TablePagination {...activePage} pageSize={pageSize} itemLabel="products" onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }} /></> : <div className="grid place-items-center px-5 py-14 text-center"><span className="grid size-12 place-items-center rounded-2xl bg-[var(--muted)] text-[var(--muted-foreground)]"><Package size={23} /></span><h3 className="mt-4 font-bold">{products.length === 0 ? "No products yet" : "No matching products"}</h3><p className="mt-1 max-w-sm text-sm text-[var(--muted-foreground)]">{products.length === 0 ? "Register the first product to begin receiving inventory." : "Try a different name, code, barcode, or category."}</p>{products.length === 0 && canManage && <Button className="mt-5" onClick={beginCreate}><Plus size={17} />Register first product</Button>}</div>}</div> : <ArchivedProductsPanel products={archivedPage.items} total={shownArchived.length} loading={archivedLoading} canRestore={canArchive} canPermanentlyDelete={canPermanentlyDelete} pending={isPending} onRestore={restore} onDelete={(product) => { setDeleteProduct(product); setDeleteConfirmation(""); setDeleteError(""); }} pagination={<TablePagination {...archivedPage} pageSize={pageSize} itemLabel="archived products" onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }} />} />}
     {!canManage && <p className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]"><Warning size={16} />Only managers and administrators can change product records.</p>}
   </div>;
 }
 
-function ArchivedProductsPanel({ products, total, loading, canRestore, pending, onRestore, pagination }: { products: ArchivedProduct[]; total: number; loading: boolean; canRestore: boolean; pending: boolean; onRestore: (product: ArchivedProduct) => void; pagination: React.ReactNode }) {
+function ArchivedProductsPanel({ products, total, loading, canRestore, canPermanentlyDelete, pending, onRestore, onDelete, pagination }: { products: ArchivedProduct[]; total: number; loading: boolean; canRestore: boolean; canPermanentlyDelete: boolean; pending: boolean; onRestore: (product: ArchivedProduct) => void; onDelete: (product: ArchivedProduct) => void; pagination: React.ReactNode }) {
   if (loading) return <div className="panel grid min-h-48 place-items-center text-sm text-[var(--muted-foreground)]">Loading archived products…</div>;
   if (total === 0) return <div className="panel grid place-items-center px-5 py-14 text-center"><span className="grid size-12 place-items-center rounded-2xl bg-[var(--muted)] text-[var(--muted-foreground)]"><Archive size={23} /></span><h3 className="mt-4 font-bold">No archived products</h3><p className="mt-1 max-w-sm text-sm text-[var(--muted-foreground)]">Discontinued products will remain recoverable here, or adjust the current search and category filter.</p></div>;
-  return <div className="panel overflow-hidden"><div className="overflow-x-auto"><table className="data-table min-w-[960px]"><thead><tr><th>Product</th><th>Barcode</th><th>Category</th><th>Reason</th><th>Archived</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{products.map((product) => <tr key={product.databaseId}><td><p className="font-semibold">{product.name}</p><p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{product.productCode}</p></td><td className="font-mono text-xs">{product.barcode}</td><td>{product.categoryName}</td><td><p className="max-w-72 text-sm">{product.archiveReason}</p></td><td><p className="text-sm">{new Intl.DateTimeFormat("en-PH", { dateStyle: "medium" }).format(new Date(product.archivedAt))}</p>{product.archivedBy && <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">by {product.archivedBy}</p>}</td><td>{canRestore && <Button size="sm" variant="secondary" disabled={pending} onClick={() => onRestore(product)}><ArrowCounterClockwise size={16} />Restore</Button>}</td></tr>)}</tbody></table></div>{pagination}</div>;
+  return <div className="panel overflow-hidden"><div className="overflow-x-auto"><table className="data-table min-w-[960px]"><thead><tr><th>Product</th><th>Barcode</th><th>Category</th><th>Reason</th><th>Archived</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{products.map((product) => <tr key={product.databaseId}><td><p className="font-semibold">{product.name}</p><p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{product.productCode}</p></td><td className="font-mono text-xs">{product.barcode}</td><td>{product.categoryName}</td><td><p className="max-w-72 text-sm">{product.archiveReason}</p></td><td><p className="text-sm">{new Intl.DateTimeFormat("en-PH", { dateStyle: "medium" }).format(new Date(product.archivedAt))}</p>{product.archivedBy && <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">by {product.archivedBy}</p>}</td><td><div className="flex justify-end gap-2">{canRestore && <Button size="sm" variant="secondary" disabled={pending} onClick={() => onRestore(product)}><ArrowCounterClockwise data-icon="inline-start" />Restore</Button>}{canPermanentlyDelete && <Button size="sm" variant="destructive" disabled={pending} onClick={() => onDelete(product)}><Trash data-icon="inline-start" />Delete</Button>}</div></td></tr>)}</tbody></table></div>{pagination}</div>;
 }

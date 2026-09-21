@@ -32,6 +32,13 @@ describe("role permissions", () => {
     expect(hasPermission("cashier", "products:manage")).toBe(false);
   });
 
+  it("limits permanent product deletion to administrators", () => {
+    expect(hasPermission("administrator", "products:delete")).toBe(true);
+    expect(hasPermission("manager", "products:delete")).toBe(false);
+    expect(hasPermission("inventory_staff", "products:delete")).toBe(false);
+    expect(hasPermission("cashier", "products:delete")).toBe(false);
+  });
+
   it("allows inventory staff to receive stock without managing products", () => {
     expect(hasPermission("inventory_staff", "stock:receive")).toBe(true);
     expect(hasPermission("cashier", "stock:receive")).toBe(false);
