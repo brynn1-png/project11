@@ -1,11 +1,29 @@
 # Progress Log
 
-## Current State Summary (Updated: 2026-09-20)
-- **Active Task:** Task #024 — Product table pagination
+## Current State Summary (Updated: 2026-09-21)
+- **Active Task:** Task #025 — Dashboard analytics redesign
 - **Status:** 🟢 Implemented and locally verified
-- **Next Action:** Confirm pagination controls with more than 25 active or archived products in the running application
+- **Next Action:** Complete live desktop and mobile visual acceptance in the running application
 - **Blockers:** No controllable browser session was available for automated screenshots
-- **Last Completed:** Task #024 Product table pagination on 2026-09-20
+- **Last Completed:** Task #025 Dashboard analytics redesign on 2026-09-21
+
+---
+
+## 2026-09-21 — Task #025: Dashboard Analytics Redesign
+**Status:** 🟢 Done
+**Summary:** Rebuilt the dashboard as a balanced daily-operations overview with responsive Chart.js visualizations and clearer action prioritization.
+**Steps completed:**
+- [x] Consolidate products, units on hand, retail inventory value, and stock-risk counts into one summary strip
+- [x] Add a responsive seven-day Chart.js bar chart for received and released units
+- [x] Show today’s received and released totals beside the movement chart
+- [x] Add a Chart.js doughnut chart for healthy, low-stock, and out-of-stock product distribution
+- [x] Prioritize out-of-stock and low-stock products in an actionable attention list
+- [x] Keep Sales and Stock In shortcuts visible without overpowering the dashboard
+- [x] Preserve the exact recent-activity table for detailed values
+- [x] Add chart labels, textual summaries, tooltips, empty states, and non-color status labels for accessibility
+- [x] Add `chart.js` and `react-chartjs-2` dependencies
+- [x] Pass ESLint, 50 tests, production build, diff validation, and the interface detector
+**Notes:** Dashboard figures are derived from the existing live or cached inventory snapshot. The movement chart is explicitly limited to the latest 100 activity records. Profit, revenue, and other unavailable accounting figures were not inferred. Live desktop and mobile visual acceptance remains manual because no controllable browser session was available.
 
 ---
 
