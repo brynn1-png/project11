@@ -29,6 +29,12 @@ For a hosted development project, apply the migrations in filename order:
 
 Then open the SQL editor and run `supabase/seed.sql` if you want the ten development products and their initial inventory batches. The seed is repeatable but resets those fixed development batches to their declared quantities, so do not rerun it after recording test sales unless that reset is intentional.
 
+## Reset development data
+
+To return a development project to an empty testing state, run `supabase/reset-development-data.sql` in the Supabase SQL editor. The script permanently removes categories, products, inventory batches, adjustments, sales, returns, business days, and audit records, then resets their counters. It preserves Supabase Auth users and `public.profiles`, so existing logins and assigned roles continue to work.
+
+Do not run the reset script against a production database. Run `supabase/seed.sql` afterward only when you want to repopulate the synthetic sample catalog; otherwise, refresh the application and begin with an empty inventory.
+
 Sales are written through protected database functions rather than direct table updates. Confirming a sale writes its receipt and line items, snapshots costs, allocates non-expired batches using FEFO, and deducts inventory in one transaction. Returns and business-day verification likewise use protected functions so approval and stock restoration remain auditable.
 
 ## Create the first administrator
