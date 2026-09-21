@@ -5,8 +5,8 @@ import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   ArrowCounterClockwise, ArrowDown, ArrowUp, Bell, CaretRight, ChartBar,
-  Check, CirclesFour, ClockCounterClockwise, DownloadSimple, List,
-  Package, Printer, Scan, ShoppingCart, SignOut, Storefront, Users, Warning, X,
+  Check, CirclesFour, ClockCounterClockwise, List,
+  Package, Scan, ShoppingCart, SignOut, Storefront, Users, Warning, X,
 } from "@phosphor-icons/react";
 import { logout } from "@/app/login/actions";
 import { useInventory } from "@/components/inventory-provider";
@@ -17,6 +17,7 @@ import { ProductManagementView } from "@/components/product-management-view";
 import { StockInView } from "@/components/stock-in-view";
 import { HistoryView } from "@/components/history-view";
 import { DashboardCharts } from "@/components/dashboard-charts";
+import { ReportsView } from "@/components/reports-view";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { cn } from "@/lib/utils";
@@ -245,7 +246,7 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
             {view === "inventory" && <InventoryView status={inventoryFilter} onStatusChange={setInventoryFilter} />}
             {view === "transactions" && <HistoryView />}
             {view === "sales-review" && <SalesVerificationView notify={notify} />}
-            {view === "reports" && <ReportsView notify={notify} />}
+            {view === "reports" && <ReportsView notify={notify} canViewSales={hasPermission(currentUser.role, "sales:record")} canViewAllSales={currentUser.role === "administrator" || currentUser.role === "manager"} />}
             {view === "users" && <UsersView users={users} />}
           </div>
         </main>
@@ -333,14 +334,6 @@ function ReceiptActivityTable({ receipts }: { receipts: ReceiptActivity[] }) {
     return <tr key={receipt.id}><td className="font-semibold">{receipt.reference}</td><td><p className="font-semibold">{receipt.productCount} product{receipt.productCount === 1 ? "" : "s"}</p><p className="mt-0.5 max-w-64 truncate text-xs text-[var(--muted-foreground)]" title={productNames.join(", ")}>{productNames.join(", ")}</p></td><td><span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold", receipt.type === "Stock In" ? "bg-emerald-50 text-emerald-800" : "bg-orange-50 text-orange-800")}>{receipt.type === "Stock In" ? <ArrowDown size={13} /> : <ArrowUp size={13} />}{receipt.type === "Stock In" ? "Stock received" : "Sale"}</span></td><td className="font-bold">{receipt.totalQuantity}</td><td>{receipt.user}</td><td className="text-[var(--muted-foreground)]">{formatDate(receipt.createdAt)}</td></tr>;
   })}</tbody></table>;
 }
-
-function ReportsView({ notify }: { notify: (message: string) => void }) {
-  const { products, transactions } = useInventory(); const stockIn = transactions.filter((t) => t.type === "Stock In").reduce((s, t) => s + t.quantity, 0); const stockOut = transactions.filter((t) => t.type === "Stock Out").reduce((s, t) => s + t.quantity, 0);
-  function csv() { const rows = [["Product ID", "Product", "Barcode", "Category", "Stock", "Unit", "Status"], ...products.map((p) => [p.id, p.name, p.barcode, p.category, p.stock, p.unit, getStockStatus(p)])]; const content = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n"); const blob = new Blob([content], { type: "text/csv" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = "inventory-report.csv"; link.click(); URL.revokeObjectURL(url); notify("Inventory report downloaded."); }
-  return <div className="grid gap-5"><div className="no-print flex flex-wrap gap-2"><Button onClick={csv} disabled={products.length === 0}><DownloadSimple size={17} />Download CSV</Button><Button variant="secondary" onClick={() => window.print()} disabled={products.length === 0}><Printer size={17} />Print report</Button></div><section className="panel overflow-hidden"><div className="border-b border-[var(--border)] p-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-xl font-bold">Current inventory report</h2><p className="mt-1 text-sm text-[var(--muted-foreground)]">Live inventory snapshot generated {new Intl.DateTimeFormat("en-PH", { dateStyle: "medium" }).format(new Date())}</p></div><p className="text-sm font-semibold">{products.length} registered products</p></div></div><div className="grid grid-cols-2 border-b border-[var(--border)] md:grid-cols-4"><ReportMetric label="Units on hand" value={products.reduce((s, p) => s + p.stock, 0)} /><ReportMetric label="Retail value" value={peso(products.reduce((s, p) => s + p.stock * p.price, 0))} /><ReportMetric label="Units received" value={stockIn} /><ReportMetric label="Units sold" value={stockOut} /></div>{products.length > 0 ? <div className="overflow-x-auto"><table className="data-table min-w-[760px]"><thead><tr><th>Product</th><th>Category</th><th>Quantity</th><th>Unit price</th><th>Retail value</th><th>Status</th></tr></thead><tbody>{products.map((p) => <tr key={p.id}><td className="font-semibold">{p.name}</td><td>{p.category}</td><td>{formatQuantity(p.stock, p.unit)}</td><td>{peso(p.price)}</td><td>{peso(p.stock * p.price)}</td><td><StatusBadge status={getStockStatus(p)} /></td></tr>)}</tbody></table></div> : <EmptyState title="No products to report" text="Add products and inventory records before exporting a report." />}</section></div>;
-}
-
-function ReportMetric({ label, value }: { label: string; value: string | number }) { return <div className="border-r border-[var(--border)] p-5 last:border-r-0"><p className="text-xs font-semibold text-[var(--muted-foreground)]">{label}</p><p className="mt-2 text-xl font-bold">{value}</p></div>; }
 
 function UsersView({ users }: { users: UserProfile[] }) { return <div className="panel overflow-hidden">{users.length > 0 ? <div className="overflow-x-auto"><table className="data-table min-w-[600px]"><thead><tr><th>User</th><th>Role</th><th>Status</th></tr></thead><tbody>{users.map((user) => <tr key={user.id}><td><div className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-[#24483a] text-xs font-bold text-white">{initials(user.fullName)}</span><span className="font-semibold">{user.fullName}</span></div></td><td>{formatRole(user.role)}</td><td><span className={cn("inline-flex rounded-full px-2.5 py-1 text-xs font-semibold", user.status === "active" ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-[#52605a]")}>{user.status === "active" ? "Active" : "Inactive"}</span></td></tr>)}</tbody></table></div> : <EmptyState title="No user profiles found" text="Authenticated user profiles will appear here." />}</div>; }
 
