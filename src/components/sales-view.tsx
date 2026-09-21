@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Barcode, Camera, CheckCircle, MagnifyingGlass, Minus, Plus, Printer, ShoppingCart, Tag, Trash, WarningCircle, WifiHigh, WifiSlash } from "@phosphor-icons/react";
+import { Barcode, Camera, CheckCircle, MagnifyingGlass, Minus, Plus, Printer, ShoppingCart, Tag, Trash, WarningCircle, WifiSlash } from "@phosphor-icons/react";
 import { recordSale, type ConfirmedSaleReceipt } from "@/app/sales/actions";
 import { CameraScanner } from "@/components/camera-scanner";
 import { useInventory } from "@/components/inventory-provider";
@@ -279,26 +279,28 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
       <div className="flex min-w-0 flex-col gap-5">
         <Tabs value={scanMode} onValueChange={changeScanMode}>
           <Card className="border-[var(--border)] bg-[var(--surface)] shadow-none">
-            <CardHeader className="flex-row items-start justify-between gap-4">
-              <CardTitle>{scanMode === "sale" ? "Scan a product" : "Check a product price"}</CardTitle>
-              <Badge variant={online && dataSource === "live" ? "default" : "destructive"} className="shrink-0">
-                {online && dataSource === "live" ? <WifiHigh weight="bold" /> : <WifiSlash weight="bold" />}
-                {!online ? "Offline" : dataSource === "cached" ? "Cached data" : dataSource === "live" ? "Online" : "Unavailable"}
+            <CardHeader className="flex-row items-center justify-between gap-4 border-b border-[var(--border)] px-5 py-4 sm:px-6">
+              <CardTitle className="text-base">{scanMode === "sale" ? "Scan a product" : "Check a product price"}</CardTitle>
+              <Badge variant={online && dataSource === "live" ? "default" : "destructive"} className="shrink-0" role="status" aria-live="polite">
+                {online && dataSource === "live" ? <><Barcode weight="bold" />Ready to scan</> : <><WifiSlash weight="bold" />{!online ? "Offline" : dataSource === "cached" ? "Cached data" : "Unavailable"}</>}
               </Badge>
             </CardHeader>
-            <CardContent>
-              <TabsList className="grid w-full grid-cols-2 sm:w-[22rem]">
-                <TabsTrigger value="sale"><ShoppingCart />Add to sale</TabsTrigger>
-                <TabsTrigger value="price"><Tag />Check price</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="sale" className="mt-5 flex flex-col gap-5">
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  {!manualEntryOpen && <Button type="button" variant="secondary" onClick={openManualEntry}><Barcode data-icon="inline-start" />Enter barcode manually</Button>}
-                  <Button type="button" variant="secondary" onClick={() => setCameraOpen((current) => !current)}>
+            <CardContent className="p-5 sm:p-6">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <TabsList className="grid w-full grid-cols-2 lg:w-[20rem]">
+                  <TabsTrigger value="sale"><ShoppingCart />Add to sale</TabsTrigger>
+                  <TabsTrigger value="price"><Tag />Check price</TabsTrigger>
+                </TabsList>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  {!manualEntryOpen && <Button type="button" variant="secondary" className="w-full sm:w-auto" onClick={openManualEntry}><Barcode data-icon="inline-start" />Enter barcode manually</Button>}
+                  <Button type="button" variant="secondary" className="w-full sm:w-auto" onClick={() => setCameraOpen((current) => !current)}>
                     <Camera data-icon="inline-start" />{cameraOpen ? "Hide camera" : "Use camera"}
                   </Button>
                 </div>
+              </div>
+
+              <TabsContent value="sale" className="mt-0">
+                {(manualEntryOpen || quantityShortcutLine || cameraOpen || message || scanStatus) && <div className="mt-4 flex flex-col gap-4 border-t border-[var(--border)] pt-4">
                 {manualEntryOpen && (
                   <form className="flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={(event) => { event.preventDefault(); handleBarcode(barcode, "manual"); }}>
                     <Field className="flex-1" data-invalid={Boolean(message)}>
@@ -340,21 +342,16 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
                 )}
                 {cameraOpen && <div className="rounded-2xl border border-[var(--border)] p-4"><CameraScanner onDetected={handleBarcode} /></div>}
                 {message && <Alert variant="destructive"><WarningCircle /><AlertTitle>Sale needs attention</AlertTitle><AlertDescription>{message}</AlertDescription></Alert>}
-                {!message && <div className="flex min-h-6 items-center gap-2 text-sm" role="status" aria-live="polite">{scanStatus ? <><CheckCircle className="shrink-0 text-[var(--accent)]" size={18} weight="fill" /><span className="font-medium">{scanStatus}</span></> : <><span className="size-2 shrink-0 rounded-full bg-emerald-600" aria-hidden="true" /><span className="font-medium text-[var(--muted-foreground)]">Ready to scan</span></>}</div>}
+                {!message && scanStatus && <div className="flex min-h-6 items-center gap-2 text-sm" role="status" aria-live="polite"><CheckCircle className="shrink-0 text-[var(--accent)]" size={18} weight="fill" /><span className="font-medium">{scanStatus}</span></div>}
+                </div>}
               </TabsContent>
 
-              <TabsContent value="price" className="mt-5 flex flex-col gap-5">
+              <TabsContent value="price" className="mt-4 flex flex-col gap-4 border-t border-[var(--border)] pt-4">
                 <Alert>
                   <Tag />
                   <AlertTitle>Price check mode</AlertTitle>
                   <AlertDescription>Scanned products will not be added to the current sale.</AlertDescription>
                 </Alert>
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  {!manualEntryOpen && <Button type="button" variant="secondary" onClick={openManualEntry}><Barcode data-icon="inline-start" />Enter barcode manually</Button>}
-                  <Button type="button" variant="secondary" onClick={() => setCameraOpen((current) => !current)}>
-                    <Camera data-icon="inline-start" />{cameraOpen ? "Hide camera" : "Use camera"}
-                  </Button>
-                </div>
                 {manualEntryOpen && (
                   <form className="flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={(event) => { event.preventDefault(); handleBarcode(barcode, "manual"); }}>
                     <Field className="flex-1" data-invalid={Boolean(message)}>
@@ -382,7 +379,6 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
                   </div>
                   <div className="mt-6 flex justify-end"><Button type="button" variant="secondary" onClick={finishPriceCheck}>Done checking price</Button></div>
                 </section>}
-                {!message && !priceProduct && <div className="flex min-h-20 items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] px-4 text-sm text-[var(--muted-foreground)]" role="status" aria-live="polite"><Barcode size={18} />Ready to check a price.</div>}
               </TabsContent>
             </CardContent>
           </Card>

@@ -21,6 +21,10 @@ describe("recordSaleSchema", () => {
     expect(recordSaleSchema.safeParse({ ...validSale, items: [{ ...validSale.items[0], quantity: -1 }] }).success).toBe(false);
   });
 
+  it("rejects duplicate product lines", () => {
+    expect(recordSaleSchema.safeParse({ ...validSale, items: [validSale.items[0], validSale.items[0]] }).success).toBe(false);
+  });
+
   it("rejects invalid cash received", () => {
     expect(recordSaleSchema.safeParse({ ...validSale, cashReceived: 0 }).success).toBe(false);
     expect(recordSaleSchema.safeParse({ ...validSale, cashReceived: 10.999 }).success).toBe(false);

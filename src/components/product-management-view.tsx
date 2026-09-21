@@ -84,8 +84,9 @@ export function ProductManagementView({ startCreating, canManage, canArchive, ca
       if (!active) return;
       if (result.ok) {
         setCategories(result.categories);
-        if (startCreating && result.categories[0]) {
-          setForm((current) => current.categoryId ? current : { ...current, categoryId: result.categories[0].id, expiryTracking: result.categories[0].defaultExpiryTracking });
+        const firstCategory = result.categories[0];
+        if (startCreating && firstCategory) {
+          setForm((current) => current.categoryId ? current : { ...current, categoryId: firstCategory.id, expiryTracking: firstCategory.defaultExpiryTracking });
         }
       }
       else setCategoryError(result.message);

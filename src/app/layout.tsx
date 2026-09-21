@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { Figtree } from "next/font/google";
+import { APP_NAME } from "@/lib/ui-copy";
 import "./globals.css";
 
 const figtree = Figtree({ subsets: ["latin"], variable: "--font-figtree" });
 
 export const metadata: Metadata = {
-  title: "South Emerald Supermarket Inventory",
-  description: "Inventory and sales operations for South Emerald Supermarket",
+  title: APP_NAME,
+  description: "Manage products, stock, sales, returns, and daily verification for South Emerald Supermarket.",
   icons: { icon: "/brand/south-emerald-mark.svg" },
 };
 

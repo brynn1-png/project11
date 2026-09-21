@@ -1,8 +1,8 @@
 # Pending Work
 
-## Current State Summary (Updated: 2026-09-19)
-- **Open items:** 6
-- **Highest priority:** Production deployment, final visual acceptance, and remaining physical camera coverage
+## Current State Summary (Updated: 2026-09-21)
+- **Open items:** 7
+- **Highest priority:** Apply the latest hosted database migrations, then complete production deployment and visual acceptance
 - **Purpose:** Track work that cannot be completed until required hardware, credentials, assets, decisions, or external access become available
 
 ---
@@ -98,3 +98,23 @@
 - Receipt Activity shows its business-day submission and verification details.
 - The receipt modal shows only returns linked to the selected sale.
 - Print and browser Save as PDF output include all purchased product lines and payment details.
+
+---
+
+## PND-008 — September 21 Archive and Activity Migrations
+**Status:** Pending hosted database confirmation
+**Added:** 2026-09-21
+**Reason:** Archive write-off, administrator product purge, and exact receipt-level activity references depend on the latest protected database functions.
+**Prerequisites:** Apply the migrations in filename order after all earlier migrations:
+- `20260921000100_admin_delete_archived_products.sql`
+- `20260921000200_archive_stock_writeoff.sql`
+- `20260921000300_allow_archived_inventory_purge.sql`
+- `20260921000400_admin_product_history_purge.sql`
+- `20260921000500_group_inventory_activity_by_receipt.sql`
+**Acceptance criteria:**
+- Archiving stock requires acknowledgement, writes remaining batches to zero, and records adjustments.
+- Administrators can permanently delete an eligible archived test product after typed-code confirmation.
+- Managers and lower roles cannot permanently purge products.
+- Related receipt totals remain valid after a permitted purge.
+- Dashboard Recent activity shows one row per sale or receiving receipt with the exact receipt reference.
+- Full Inventory activity remains item-level.

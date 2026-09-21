@@ -11,7 +11,7 @@ export default async function Home() {
   const inventory = await getInventorySnapshot(user.role);
 
   return (
-    <InventoryProvider products={inventory.products} transactions={inventory.transactions} serverAvailable={!inventory.error}>
+    <InventoryProvider products={inventory.products} transactions={inventory.transactions} serverAvailable={!inventory.error} cacheScope={`${user.id}:${user.role}`}>
       <InventoryApp currentUser={user} users={inventory.users} dataError={inventory.error} />
     </InventoryProvider>
   );

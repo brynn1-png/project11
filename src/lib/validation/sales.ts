@@ -10,6 +10,14 @@ export const recordSaleSchema = z.object({
   items: z.array(saleItemSchema).min(1, "Add at least one product.").max(250, "A sale cannot contain more than 250 products."),
   notes: z.string().trim().max(500, "Notes cannot exceed 500 characters.").optional(),
   cashReceived: z.number().positive("Cash received must be greater than zero.").max(100000000, "Cash received is too large.").refine((value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-8, "Cash received cannot have more than two decimal places."),
+}).superRefine((value, context) => {
+  const productIds = new Set<string>();
+  value.items.forEach((item, index) => {
+    if (productIds.has(item.productId)) {
+      context.addIssue({ code: "custom", path: ["items", index, "productId"], message: "Each product can only appear once in a sale." });
+    }
+    productIds.add(item.productId);
+  });
 });
 
 export type RecordSaleInput = z.infer<typeof recordSaleSchema>;

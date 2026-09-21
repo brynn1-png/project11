@@ -4,7 +4,7 @@ import type { Product, StockTransaction } from "@/lib/types";
 
 const DATABASE_NAME = "inventory-system-cache";
 const STORE_NAME = "snapshots";
-const SNAPSHOT_KEY = "latest-inventory";
+const SNAPSHOT_KEY_PREFIX = "latest-inventory";
 
 export type CachedInventorySnapshot = {
   products: Product[];
@@ -23,22 +23,26 @@ function openDatabase(): Promise<IDBDatabase> {
   });
 }
 
-export async function saveInventorySnapshot(snapshot: CachedInventorySnapshot) {
+function snapshotKey(scope: string) {
+  return `${SNAPSHOT_KEY_PREFIX}:${scope}`;
+}
+
+export async function saveInventorySnapshot(scope: string, snapshot: CachedInventorySnapshot) {
   const database = await openDatabase();
   await new Promise<void>((resolve, reject) => {
     const transaction = database.transaction(STORE_NAME, "readwrite");
-    transaction.objectStore(STORE_NAME).put(snapshot, SNAPSHOT_KEY);
+    transaction.objectStore(STORE_NAME).put(snapshot, snapshotKey(scope));
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error);
   });
   database.close();
 }
 
-export async function loadInventorySnapshot(): Promise<CachedInventorySnapshot | null> {
+export async function loadInventorySnapshot(scope: string): Promise<CachedInventorySnapshot | null> {
   const database = await openDatabase();
   const snapshot = await new Promise<CachedInventorySnapshot | null>((resolve, reject) => {
     const transaction = database.transaction(STORE_NAME, "readonly");
-    const request = transaction.objectStore(STORE_NAME).get(SNAPSHOT_KEY);
+    const request = transaction.objectStore(STORE_NAME).get(snapshotKey(scope));
     request.onsuccess = () => resolve((request.result as CachedInventorySnapshot | undefined) ?? null);
     request.onerror = () => reject(request.error);
   });

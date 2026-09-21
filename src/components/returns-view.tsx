@@ -68,7 +68,7 @@ export function ReturnsView({ notify }: { notify: (message: string) => void }) {
   function submit() {
     const selected = items.flatMap((item) => {
       const line = lines[item.saleItemId];
-      return line?.quantity > 0 ? [{ saleItemId: item.saleItemId, quantity: line.quantity, disposition: line.disposition }] : [];
+      return line && line.quantity > 0 ? [{ saleItemId: item.saleItemId, quantity: line.quantity, disposition: line.disposition }] : [];
     });
     setMessage("");
     startTransition(async () => {
@@ -129,8 +129,8 @@ export function ReturnsView({ notify }: { notify: (message: string) => void }) {
                 const line = lines[item.saleItemId];
                 return <div key={item.saleItemId} className="grid gap-4 rounded-xl border border-[var(--border)] p-4 md:grid-cols-[minmax(0,1fr)_130px_180px] md:items-end">
                   <div className="min-w-0"><p className="truncate font-semibold">{item.productName}</p><p className="mt-1 text-xs text-[var(--muted-foreground)]">{item.barcode} · {remaining} of {item.quantitySold} eligible</p></div>
-                  <Field><FieldLabel htmlFor={`return-qty-${item.saleItemId}`}>Quantity</FieldLabel><Input id={`return-qty-${item.saleItemId}`} type="number" min="0" max={remaining} value={line?.quantity ?? 0} onChange={(event) => setLines((current) => ({ ...current, [item.saleItemId]: { ...current[item.saleItemId], quantity: Math.min(Math.max(Number(event.target.value), 0), remaining) } }))} /></Field>
-                  <Field><FieldLabel htmlFor={`return-condition-${item.saleItemId}`}>Condition</FieldLabel><select id={`return-condition-${item.saleItemId}`} className="select-field" value={line?.disposition ?? "restock"} onChange={(event) => setLines((current) => ({ ...current, [item.saleItemId]: { ...current[item.saleItemId], disposition: event.target.value as ReturnLine["disposition"] } }))}><option value="restock">Resellable</option><option value="damaged">Damaged</option><option value="expired">Expired</option></select></Field>
+                  <Field><FieldLabel htmlFor={`return-qty-${item.saleItemId}`}>Quantity</FieldLabel><Input id={`return-qty-${item.saleItemId}`} type="number" min="0" max={remaining} value={line?.quantity ?? 0} onChange={(event) => setLines((current) => ({ ...current, [item.saleItemId]: { ...(current[item.saleItemId] ?? { quantity: 0, disposition: "restock" }), quantity: Math.min(Math.max(Number(event.target.value), 0), remaining) } }))} /></Field>
+                  <Field><FieldLabel htmlFor={`return-condition-${item.saleItemId}`}>Condition</FieldLabel><select id={`return-condition-${item.saleItemId}`} className="select-field" value={line?.disposition ?? "restock"} onChange={(event) => setLines((current) => ({ ...current, [item.saleItemId]: { ...(current[item.saleItemId] ?? { quantity: 0, disposition: "restock" }), disposition: event.target.value as ReturnLine["disposition"] } }))}><option value="restock">Resellable</option><option value="damaged">Damaged</option><option value="expired">Expired</option></select></Field>
                 </div>;
               })}
             </div>

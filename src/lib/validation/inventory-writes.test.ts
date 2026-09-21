@@ -41,6 +41,17 @@ describe("inventory write validation", () => {
     expect(result.success).toBe(false);
   });
 
+  it("rejects calendar dates that do not exist", () => {
+    const result = receiveStockInputSchema.safeParse({
+      productId: product.categoryId,
+      quantity: 12,
+      unitCost: 60,
+      expiryTracking: "required",
+      expiresAt: "2026-99-99",
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("accepts a non-expiring receipt without expiry", () => {
     const result = receiveStockInputSchema.safeParse({
       productId: product.categoryId,

@@ -1,10 +1,56 @@
 # Decision Log
 
-## Current State Summary (Updated: 2026-09-20)
-- **Active Decision:** Product tables paginate filtered in-memory catalogs before rendering
+## Current State Summary (Updated: 2026-09-21)
+- **Active Decision:** Summarize dashboard activity by its parent receipt while preserving item-level audit history
 - **Status:** 🟢 Confirmed
-- **Latest Decision:** Use client-side pagination now and defer database pagination until catalog scale requires it
+- **Latest Decision:** Add stable receipt group identifiers to the activity read model instead of inferring receipts from timestamps
 - **Open Questions:** Future adjustment approval and hosting
+
+---
+
+## 2026-09-21 — Task #031: Receipt-Level Dashboard Activity
+**Decision:** Group only the dashboard’s Recent activity by the parent sale or receiving receipt.
+**Why:** Cashiers and managers need to recognize complete customer transactions at a glance; one row per product makes a single receipt look like many unrelated activities.
+**Data rule:** The protected activity read model supplies a stable parent ID and readable reference. Sale lines sharing a sale ID are combined; each receiving batch remains its own receiving receipt.
+**Audit boundary:** Inventory activity history stays item-level so product movements remain traceable.
+**Fallback:** Legacy cached sale rows may be grouped by matching timestamp, actor, type, and notes until fresh migrated records are loaded.
+
+---
+
+## 2026-09-21 — Task #030: Concise Operational Copy
+**Decision:** Remove interface text that merely repeats a heading, label, or visible control, but retain text that explains risk, consequence, eligibility, recovery, or a non-obvious state.
+**Why:** The application is used repeatedly under operational time pressure; persistent training copy slows scanning after the workflow is learned.
+**Scanner state:** Keep a short `Ready to scan` indicator because readiness is a live system state, not instructional prose.
+
+---
+
+## 2026-09-21 — Task #029: Barcode Identity and Cashier Quantity Entry
+**Decision:** Treat manufacturer barcodes as trimmed, case-insensitive printable-ASCII identifiers throughout registration, Sales, and Stock In.
+**Why:** Real scanners may emit numeric, alphabetic, punctuation-bearing, or case-varied Code 39/Code 128 values. Lookup and validation must share one rule.
+**Quantity interaction:** `*` targets the last scanned cart product, accepts a replacement whole-number quantity, and applies it on Enter without bypassing available-stock limits.
+**Manual entry:** Hide the manual barcode input until requested; hardware scanning remains available without exposing each scanned value in a persistent field.
+
+---
+
+## 2026-09-21 — Task #028: Stock Alert Attention
+**Decision:** Increase the visual prominence of unresolved stock alerts and animate only a newly increased alert count.
+**Why:** A small icon and number were easy to miss, while continuous animation would create distraction in a frequently used checkout interface.
+**Accessibility:** Pair color with text and count, announce changes, preserve keyboard focus, and disable motion under reduced-motion preferences.
+
+---
+
+## 2026-09-21 — Task #027: Development Reset Boundary
+**Decision:** Provide a separate manually executed reset script instead of encoding test cleanup as an application feature or normal migration.
+**Why:** A fresh testing database is useful, but wholesale deletion is too destructive for routine product behavior and must never run automatically in production.
+**Preserved records:** Authentication users and profiles remain so existing accounts and roles can continue testing after operational data is cleared.
+
+---
+
+## 2026-09-21 — Task #026: Archive Versus Permanent Deletion
+**Decision:** Allow administrators and managers to archive stock-bearing products after explicit write-off acknowledgement, but restrict permanent deletion of archived products to administrators.
+**Why:** Archive is an operational lifecycle action and must preserve traceability. Permanent purge exists only for deliberate test-data cleanup and therefore requires stronger permission and typed product-code confirmation.
+**Integrity:** Archiving writes remaining stock to zero with adjustments. Permanent purge removes dependent product history atomically and recalculates or removes affected sales receipts.
+**Production default:** Keep products archived instead of permanently deleting them when historical records should remain readable.
 
 ---
 

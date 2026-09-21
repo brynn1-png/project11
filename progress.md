@@ -1,11 +1,108 @@
 # Progress Log
 
 ## Current State Summary (Updated: 2026-09-21)
-- **Active Task:** Task #025 — Dashboard analytics redesign
+- **Active Task:** Task #031 — Receipt-level recent activity
 - **Status:** 🟢 Implemented and locally verified
-- **Next Action:** Complete live desktop and mobile visual acceptance in the running application
-- **Blockers:** No controllable browser session was available for automated screenshots
-- **Last Completed:** Task #025 Dashboard analytics redesign on 2026-09-21
+- **Next Action:** Apply the latest receipt-grouping migration and confirm the dashboard against live receipts
+- **Blockers:** Hosted database migration and live browser acceptance remain external
+- **Last Completed:** Task #031 Receipt-level recent activity on 2026-09-21
+
+---
+
+## 2026-09-21 — Task #031: Receipt-Level Recent Activity
+**Status:** 🟡 Implementation complete; hosted migration pending
+**Summary:** Changed the dashboard’s Recent activity table from one row per product movement to one row per sale or receiving receipt.
+**Steps completed:**
+- [x] Add stable receipt-group identifiers and readable receipt numbers to the inventory activity read model
+- [x] Combine sale lines from the same receipt into one dashboard row
+- [x] Show unique product count, combined quantity, activity type, user, and date
+- [x] Keep receiving entries separated by receiving receipt
+- [x] Preserve the detailed item-level inventory activity view for auditing
+- [x] Add a compatibility fallback for cached activity loaded before the migration
+- [x] Add receipt-grouping unit tests
+- [x] Pass ESLint, 64 tests, production build, diff validation, and the interface detector
+- [ ] Apply `20260921000500_group_inventory_activity_by_receipt.sql` to hosted Supabase
+- [ ] Confirm live receipt numbers and grouping on the dashboard
+**Notes:** Exact receipt grouping uses the parent sale or receiving ID supplied by the new read model. The fallback groups legacy sale rows by shared timestamp, actor, and notes only until fresh migrated data is loaded.
+
+---
+
+## 2026-09-21 — Task #030: Interface Copy Cleanup and Scan Readiness
+**Status:** 🟢 Done
+**Summary:** Reduced repetitive instructional text across the main workflows while restoring a concise Sales scanner readiness indicator.
+**Steps completed:**
+- [x] Remove repeated page subtitles and obvious form descriptions
+- [x] Remove persistent USB-scanner setup instructions from Sales and Stock In
+- [x] Remove redundant product, camera, receiving, and printable-label helper text
+- [x] Keep validation, archive consequences, expiry rules, barcode-alias behavior, and recovery guidance
+- [x] Add a compact green `Ready to scan` status in Sales
+- [x] Let scan success and error messages replace the idle status without competing announcements
+- [x] Pass ESLint, 61 tests, production build, diff validation, and the interface detector
+**Notes:** The cleanup intentionally preserves text that changes a user’s decision or prevents data loss.
+
+---
+
+## 2026-09-21 — Task #029: Barcode Compatibility and High-Quantity Sales
+**Status:** 🟢 Implemented and locally verified
+**Summary:** Expanded supported barcode input and added a cashier-style multiplication shortcut for setting large quantities quickly.
+**Steps completed:**
+- [x] Normalize barcode lookup consistently in Sales and Stock In
+- [x] Match alphanumeric manufacturer barcodes case-insensitively, including values such as `K500003T`
+- [x] Accept printable ASCII barcode values without embedded spaces and keep shared length limits
+- [x] Ignore scanner modifier-only events without breaking uppercase barcode capture
+- [x] Hide the manual barcode field until Enter barcode manually is selected
+- [x] Keep USB scan-anywhere capture active without displaying scanned values in a persistent field
+- [x] Add `*`, quantity, and Enter as a shortcut for replacing the last scanned product’s quantity
+- [x] Enforce whole-number and available-stock limits for shortcut quantities
+- [x] Add barcode, scanner-capture, receiving-selection, and cart tests
+- [x] Pass ESLint, 61 tests, production build, diff validation, and the interface detector
+**Notes:** The multiplication shortcut updates the existing cart line; it does not add duplicate product rows or bypass stock validation.
+
+---
+
+## 2026-09-21 — Task #028: Stock Alert Prominence
+**Status:** 🟢 Done
+**Summary:** Made active stock alerts easier to notice without turning routine navigation into a persistent warning state.
+**Steps completed:**
+- [x] Show a labeled Stock alerts control and count when products need attention
+- [x] Use an amber warning surface and stronger count contrast
+- [x] Announce current alert totals to assistive technology
+- [x] Add a brief attention animation only when the alert count increases
+- [x] Disable the attention motion when reduced motion is requested
+- [x] Improve keyboard focus visibility in the alert list
+- [x] Pass ESLint, tests, production build, and the interface detector
+**Notes:** The existing derived-alert rules and navigation behavior remain unchanged.
+
+---
+
+## 2026-09-21 — Task #027: Development Data Reset
+**Status:** 🟢 Done
+**Summary:** Added an explicit development-only database reset for returning the system to an empty testing state.
+**Steps completed:**
+- [x] Remove operational categories, products, batches, adjustments, sales, returns, business days, and audit logs in one transaction
+- [x] Reset product, internal-barcode, receiving, and table identity counters
+- [x] Preserve Supabase Auth users, profiles, roles, and login access
+- [x] Reload the PostgREST schema after reset
+- [x] Document the destructive scope and prohibit production use
+**Notes:** `supabase/reset-development-data.sql` is intentionally separate from migrations and seed data. Running it is a manual, irreversible development action.
+
+---
+
+## 2026-09-21 — Task #026: Archive Write-Off and Administrator Purge
+**Status:** 🟡 Implementation complete; hosted migration confirmation pending
+**Summary:** Allowed stock-bearing products to be archived with explicit write-off confirmation and allowed administrators to permanently purge eligible archived products.
+**Steps completed:**
+- [x] Replace the zero-stock archive blocker with a remaining-stock warning and acknowledgement
+- [x] Write off every remaining batch and preserve adjustment and audit records during archive
+- [x] Keep pending resellable returns as an archive blocker
+- [x] Restrict permanent product deletion to administrators and archived products
+- [x] Require the exact product code before permanent deletion
+- [x] Remove related aliases, costs, batches, allocations, adjustments, return lines, and sale lines atomically
+- [x] Recalculate affected receipt totals and delete receipts left with no items
+- [x] Explain operational-history blockers and destructive consequences in the interface
+- [x] Add administrator permission coverage
+- [ ] Confirm migrations `20260921000100` through `20260921000400` are active on hosted Supabase
+**Notes:** Permanent deletion is intended for test-data cleanup. Archive remains the normal production lifecycle for products with history.
 
 ---
 

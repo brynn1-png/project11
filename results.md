@@ -1,10 +1,55 @@
 # Results Log
 
-## Current State Summary (Updated: 2026-09-20)
-- **Active Task:** Task #024 — Product table pagination
+## Current State Summary (Updated: 2026-09-21)
+- **Active Task:** Task #031 — Receipt-level recent activity
 - **Status:** 🟢 Implemented and locally verified
-- **Latest Result:** Active and archived product tables now render filtered results in accessible, adjustable pages
-- **Verification:** TypeScript, ESLint, 50 tests, production build, and Impeccable interface detector passed
+- **Latest Result:** Dashboard activity now presents one row per sale or receiving receipt
+- **Verification:** ESLint, 64 tests, production build, diff validation, and Impeccable interface detector passed
+
+---
+
+## 2026-09-21 — Task #031: Receipt-Level Recent Activity Result
+**Outcome:** Recent activity now combines every product line from one sale into a single receipt row. Receiving records remain separate by receiving receipt.
+**Display result:** Each row shows the receipt reference, unique product count, product names, activity type, combined quantity, user, and date.
+**Audit boundary:** The full Inventory activity history remains item-level. Only the dashboard summary is grouped.
+**Compatibility result:** Cached legacy rows can be grouped before the migration is applied; exact `Sale #…` and `Receiving #…` references require the updated database read model.
+**Verification results:** ESLint passed, 64 tests passed across 12 files, production build passed, and the interface detector reported no findings.
+**Pending verification:** Apply `20260921000500_group_inventory_activity_by_receipt.sql` and verify live receipt grouping.
+
+---
+
+## 2026-09-21 — Task #030: Interface Copy Cleanup Result
+**Outcome:** Main workflows contain less repeated explanatory text, while warnings, validation, recovery instructions, and destructive-action consequences remain visible.
+**Sales result:** Persistent scanner setup copy was removed and replaced with a compact `Ready to scan` indicator that yields to success and error feedback.
+**Verification results:** ESLint, 61 tests, production build, diff validation, and interface detector passed.
+
+---
+
+## 2026-09-21 — Task #029: Barcode and Quantity Workflow Result
+**Outcome:** Sales and Stock In use the same normalized barcode matching, including case-insensitive alphanumeric manufacturer codes. Scanner capture accepts printable ASCII and safely ignores modifier-only keystrokes.
+**Sales result:** The manual barcode field is progressively disclosed, scanned values no longer remain visibly exposed, and `*` followed by a whole-number quantity and Enter updates the last scanned cart line.
+**Safety result:** Unknown codes, invalid quantities, and quantities above available stock leave the cart protected and produce actionable feedback.
+**Verification results:** ESLint, 61 tests, production build, diff validation, and interface detector passed.
+
+---
+
+## 2026-09-21 — Task #028: Stock Alert Prominence Result
+**Outcome:** Active stock alerts now appear as a labeled amber control with a high-contrast count instead of relying on a small bell badge.
+**Accessibility result:** Count changes are announced, keyboard focus is visible, reduced motion is respected, and the brief attention cue runs only when the count increases.
+
+---
+
+## 2026-09-21 — Task #027: Development Reset Result
+**Outcome:** The repository now includes one clearly marked SQL script for clearing development inventory and transaction data while preserving users and roles.
+**Safety boundary:** The reset is manual, transactional, irreversible, and explicitly prohibited on production databases.
+
+---
+
+## 2026-09-21 — Task #026: Archive and Purge Result
+**Outcome:** Administrators and managers can archive a stock-bearing product only after acknowledging the write-off. Administrators can permanently delete archived test products after typing the exact product code.
+**Integrity result:** Archive zeroes remaining batches with recorded adjustments. Permanent purge removes dependent product history atomically, recalculates affected receipts, and removes empty receipts so foreign-key references cannot leave partial records.
+**Permission result:** Permanent purge is administrator-only; archive remains available to administrators and managers.
+**Pending verification:** Confirm all four September 21 archive/purge migrations are active on hosted Supabase.
 
 ---
 

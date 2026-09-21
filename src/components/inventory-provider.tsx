@@ -19,7 +19,8 @@ export function InventoryProvider({
   products,
   transactions,
   serverAvailable,
-}: Pick<InventoryContextValue, "products" | "transactions"> & { children: React.ReactNode; serverAvailable: boolean }) {
+  cacheScope,
+}: Pick<InventoryContextValue, "products" | "transactions"> & { children: React.ReactNode; serverAvailable: boolean; cacheScope: string }) {
   const router = useRouter();
   const [currentProducts, setCurrentProducts] = useState(products);
   const [currentTransactions, setCurrentTransactions] = useState(transactions);
@@ -32,7 +33,7 @@ export function InventoryProvider({
       try {
         if (serverAvailable) {
           const savedAt = new Date().toISOString();
-          await saveInventorySnapshot({ products, transactions, savedAt });
+          await saveInventorySnapshot(cacheScope, { products, transactions, savedAt });
           if (active) {
             setCurrentProducts(products);
             setCurrentTransactions(transactions);
@@ -42,7 +43,7 @@ export function InventoryProvider({
           return;
         }
 
-        const cached = await loadInventorySnapshot();
+        const cached = await loadInventorySnapshot(cacheScope);
         if (active && cached) {
           setCurrentProducts(cached.products);
           setCurrentTransactions(cached.transactions);
@@ -55,13 +56,13 @@ export function InventoryProvider({
     }
     void synchronizeCache();
     return () => { active = false; };
-  }, [products, serverAvailable, transactions]);
+  }, [cacheScope, products, serverAvailable, transactions]);
 
   useEffect(() => {
     if (!serverAvailable) return;
     const refresh = () => router.refresh();
     const refreshWhenVisible = () => { if (document.visibilityState === "visible") refresh(); };
-    const interval = window.setInterval(refresh, 60000);
+    const interval = window.setInterval(refreshWhenVisible, 60000);
     window.addEventListener("online", refresh);
     document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {

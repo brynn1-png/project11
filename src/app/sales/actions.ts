@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { hasPermission } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
@@ -59,6 +60,8 @@ export async function recordSale(input: RecordSaleInput): Promise<RecordSaleResu
   const row = (Array.isArray(data) ? data[0] : data) as RecordedSaleRow | null;
   if (!row) return { ok: false, message: "The database did not return a sale confirmation." };
 
+  revalidatePath("/");
+
   return {
     ok: true,
     receipt: {
@@ -87,7 +90,7 @@ type PendingReturnRow = { id: string; business_day_id: string; return_number: nu
 
 export async function findSaleForReturn(saleNumber: number): Promise<{ ok: true; items: ReturnableSaleItem[] } | { ok: false; message: string }> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, message: "Sign in again before processing a return." };
+  if (!user || !hasPermission(user.role, "sales:record")) return { ok: false, message: "Your account is not allowed to process returns." };
   if (!Number.isSafeInteger(saleNumber) || saleNumber < 1) return { ok: false, message: "Enter a valid sale number." };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_sale_for_return", { p_sale_number: saleNumber });
@@ -149,11 +152,19 @@ const returnRequestSchema = z.object({
     quantity: z.number().int().positive(),
     disposition: z.enum(["restock", "damaged", "expired"]),
   })).min(1, "Select at least one returned item."),
+}).superRefine((value, context) => {
+  const saleItemIds = new Set<string>();
+  value.items.forEach((item, index) => {
+    if (saleItemIds.has(item.saleItemId)) {
+      context.addIssue({ code: "custom", path: ["items", index, "saleItemId"], message: "Each returned item can only appear once." });
+    }
+    saleItemIds.add(item.saleItemId);
+  });
 });
 
 export async function requestSaleReturn(input: z.infer<typeof returnRequestSchema>): Promise<{ ok: true; returnNumber: string } | { ok: false; message: string }> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, message: "Sign in again before processing a return." };
+  if (!user || !hasPermission(user.role, "sales:record")) return { ok: false, message: "Your account is not allowed to process returns." };
   const parsed = returnRequestSchema.safeParse(input);
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Review the return request." };
   const supabase = await createClient();
@@ -167,6 +178,7 @@ export async function requestSaleReturn(input: z.infer<typeof returnRequestSchem
     console.error("Return request failed", error);
     return { ok: false, message: error.message.includes("exceeds") ? error.message : "The return request could not be recorded." };
   }
+  revalidatePath("/");
   return { ok: true, returnNumber: String(data) };
 }
 
@@ -175,13 +187,13 @@ export type PendingReturnSummary = { id: string; businessDayId: string; returnNu
 
 export async function loadSalesVerification(): Promise<{ days: BusinessDaySummary[]; returns: PendingReturnSummary[]; error?: string }> {
   const user = await getCurrentUser();
-  if (!user || !["administrator", "manager"].includes(user.role)) return { days: [], returns: [], error: "Manager access is required." };
+  if (!user || !hasPermission(user.role, "sales:verify")) return { days: [], returns: [], error: "Manager access is required." };
   const supabase = await createClient();
   const [daysResult, returnsResult] = await Promise.all([
     supabase.rpc("get_business_day_summaries", { p_limit: 14 }),
     supabase.rpc("get_pending_return_summaries"),
   ]);
-  if (daysResult.error || returnsResult.error) return { days: [], returns: [], error: "Sales verification data could not be loaded." };
+  if (daysResult.error || returnsResult.error) return { days: [], returns: [], error: "Daily verification data could not be loaded." };
   return {
     days: ((daysResult.data ?? []) as BusinessDayRow[]).map((row) => ({ id: row.id, businessDate: row.business_date, status: row.status, saleCount: Number(row.sale_count), itemCount: Number(row.item_count), grossTotal: Number(row.gross_total), returnCount: Number(row.return_count) })),
     returns: ((returnsResult.data ?? []) as PendingReturnRow[]).map((row) => ({ id: row.id, businessDayId: row.business_day_id, returnNumber: String(row.return_number), saleNumber: String(row.sale_number), reason: row.reason, requestedBy: row.requested_by_name, requestedAt: row.requested_at, itemCount: Number(row.item_count), items: row.items.map((item) => ({ productName: item.product_name, quantity: Number(item.quantity), disposition: item.disposition })) })),
@@ -190,22 +202,24 @@ export async function loadSalesVerification(): Promise<{ days: BusinessDaySummar
 
 export async function changeBusinessDayStatus(id: string, action: "submit" | "verify") {
   const user = await getCurrentUser();
-  if (!user || !["administrator", "manager"].includes(user.role)) return { ok: false, message: "Manager access is required." };
+  if (!user || !hasPermission(user.role, "sales:verify")) return { ok: false, message: "Manager access is required." };
   const parsed = z.uuid().safeParse(id);
-  if (!parsed.success) return { ok: false, message: "Business day identifier is invalid." };
+  if (!parsed.success) return { ok: false, message: "Daily sales record identifier is invalid." };
   const supabase = await createClient();
   const { error } = await supabase.rpc(action === "submit" ? "submit_business_day" : "verify_business_day", { p_business_day_id: parsed.data });
   if (error) return { ok: false, message: error.message };
-  return { ok: true, message: action === "submit" ? "Business day submitted for review." : "Business day verified." };
+  revalidatePath("/");
+  return { ok: true, message: action === "submit" ? "Daily sales record submitted for review." : "Daily sales record verified." };
 }
 
 export async function reviewSaleReturn(id: string, approve: boolean) {
   const user = await getCurrentUser();
-  if (!user || !["administrator", "manager"].includes(user.role)) return { ok: false, message: "Manager access is required." };
+  if (!user || !hasPermission(user.role, "sales:verify")) return { ok: false, message: "Manager access is required." };
   const parsed = z.uuid().safeParse(id);
   if (!parsed.success) return { ok: false, message: "Return identifier is invalid." };
   const supabase = await createClient();
   const { error } = await supabase.rpc("review_sale_return", { p_return_id: parsed.data, p_approve: approve });
   if (error) return { ok: false, message: error.message };
+  revalidatePath("/");
   return { ok: true, message: approve ? "Return approved and eligible stock restored." : "Return rejected." };
 }

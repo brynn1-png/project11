@@ -37,7 +37,7 @@ export const productInputSchema = z.object({
   }
 });
 
-const dateField = z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a valid date.").optional();
+const dateField = z.iso.date("Use a valid date.").optional();
 
 export const receiveStockInputSchema = z.object({
   productId: z.uuid("Select a product."),

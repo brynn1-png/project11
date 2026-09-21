@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/login-form";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { isSupabaseConfigured } from "@/lib/env";
+import { APP_NAME, STORE_NAME } from "@/lib/ui-copy";
 
 export default async function LoginPage() {
   const configured = isSupabaseConfigured();
@@ -25,7 +26,7 @@ export default async function LoginPage() {
         <div className="w-full max-w-md">
           <Image
             src="/brand/south-emerald-logo.svg"
-            alt="South Emerald Supermarket"
+            alt={STORE_NAME}
             width={196}
             height={166}
             className="mx-auto mb-8 hidden h-auto w-[196px] lg:block"
@@ -33,10 +34,10 @@ export default async function LoginPage() {
           />
           <div className="mb-10 flex items-center gap-3 lg:hidden">
             <Image src="/brand/south-emerald-mark.svg" alt="" width={44} height={44} className="size-11 rounded-xl bg-white p-0.5" priority />
-            <span className="text-lg font-bold">South Emerald Supermarket</span>
+            <span className="text-lg font-bold">{APP_NAME}</span>
           </div>
           <h2 className="text-3xl font-bold tracking-[-0.03em]">Welcome back</h2>
-          <p className="mt-2 text-[var(--muted-foreground)]">Sign in with your assigned store account.</p>
+          <p className="mt-2 text-[var(--muted-foreground)]">Sign in to manage inventory and sales with your assigned staff account.</p>
           {configured ? <LoginForm /> : <SetupRequired />}
         </div>
       </section>
