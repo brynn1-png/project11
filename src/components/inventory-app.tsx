@@ -32,17 +32,45 @@ import { APP_SHORT_NAME } from "@/lib/ui-copy";
 type View = "dashboard" | "products" | "sales" | "returns" | "stock-in" | "inventory" | "transactions" | "sales-review" | "reports" | "users";
 type InventoryFilter = "All" | "In Stock" | "Low Stock" | "Out of Stock";
 
-const NAV_ITEMS: { id: View; label: string; icon: typeof CirclesFour }[] = [
-  { id: "dashboard", label: "Dashboard", icon: CirclesFour },
-  { id: "products", label: "Products", icon: Package },
-  { id: "sales", label: "Sales", icon: ShoppingCart },
-  { id: "returns", label: "Returns", icon: ArrowCounterClockwise },
-  { id: "stock-in", label: "Receive Stock", icon: ArrowDown },
-  { id: "inventory", label: "Stock Levels", icon: Storefront },
-  { id: "transactions", label: "Activity & Receipts", icon: ClockCounterClockwise },
-  { id: "sales-review", label: "Daily Verification", icon: Check },
-  { id: "reports", label: "Reports", icon: ChartBar },
-  { id: "users", label: "Staff Accounts", icon: Users },
+type NavItem = { id: View; label: string; icon: typeof CirclesFour };
+
+const NAV_GROUPS: { id: string; label: string; items: NavItem[] }[] = [
+  {
+    id: "overview",
+    label: "Overview",
+    items: [{ id: "dashboard", label: "Dashboard", icon: CirclesFour }],
+  },
+  {
+    id: "sales",
+    label: "Sales",
+    items: [
+      { id: "sales", label: "Sales", icon: ShoppingCart },
+      { id: "returns", label: "Returns", icon: ArrowCounterClockwise },
+    ],
+  },
+  {
+    id: "inventory",
+    label: "Inventory",
+    items: [
+      { id: "products", label: "Products", icon: Package },
+      { id: "stock-in", label: "Receive Stock", icon: ArrowDown },
+      { id: "inventory", label: "Stock Levels", icon: Storefront },
+    ],
+  },
+  {
+    id: "records-control",
+    label: "Records & Control",
+    items: [
+      { id: "transactions", label: "Activity & Receipts", icon: ClockCounterClockwise },
+      { id: "sales-review", label: "Daily Verification", icon: Check },
+      { id: "reports", label: "Reports", icon: ChartBar },
+    ],
+  },
+  {
+    id: "administration",
+    label: "Administration",
+    items: [{ id: "users", label: "Staff Accounts", icon: Users }],
+  },
 ];
 
 const VIEW_PERMISSIONS: Partial<Record<View, Permission>> = {
@@ -274,16 +302,24 @@ function initials(name: string) {
 }
 
 function Sidebar({ currentUser, view, open, onClose, onNavigate }: { currentUser: CurrentUser; view: View; open: boolean; onClose: () => void; onNavigate: (view: View) => void }) {
-  const visibleItems = NAV_ITEMS.filter((item) => {
-    const permission = VIEW_PERMISSIONS[item.id];
-    return !permission || hasPermission(currentUser.role, permission);
-  });
+  const visibleGroups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => {
+      const permission = VIEW_PERMISSIONS[item.id];
+      return !permission || hasPermission(currentUser.role, permission);
+    }),
+  })).filter((group) => group.items.length > 0);
   return <>
     <button disabled={!open} className={cn("fixed inset-0 z-30 bg-black/30 transition-opacity duration-[180ms] ease-[var(--ease-out)] lg:hidden", open ? "opacity-100" : "pointer-events-none opacity-0")} onClick={onClose} aria-label="Close navigation overlay" />
     <aside className={cn("no-print fixed inset-y-0 left-0 z-40 flex w-[264px] flex-col border-r border-[#27603f] bg-[#16452e] p-4 text-white transition-transform duration-[250ms] ease-[var(--ease-drawer)] lg:translate-x-0", open ? "translate-x-0" : "-translate-x-full")}>
       <div className="mb-7 flex h-12 items-center justify-between px-2"><div className="flex min-w-0 items-center gap-3"><Image src="/brand/south-emerald-mark.svg" alt="" width={40} height={40} className="size-10 shrink-0 rounded-xl bg-white p-0.5" priority /><div className="min-w-0"><p className="truncate font-bold leading-tight">South Emerald</p><p className="truncate text-xs text-white/55">{APP_SHORT_NAME}</p></div></div><button className="grid size-10 shrink-0 place-items-center rounded-lg text-white/70 hover:bg-white/10 lg:hidden" onClick={onClose} aria-label="Close navigation"><X size={19} /></button></div>
-      <nav className="flex-1 space-y-1" aria-label="Main navigation">
-        {visibleItems.map((item) => { const Icon = item.icon; const active = view === item.id; return <button key={item.id} onClick={() => onNavigate(item.id)} className={cn("flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-xl px-3 text-left text-sm font-medium transition-colors", active ? "bg-[#f4e90b] text-[#173b27]" : "text-white/70 hover:bg-white/[.08] hover:text-white")}><Icon size={19} weight={active ? "fill" : "regular"} />{item.label}</button>; })}
+      <nav className="min-h-0 flex-1 overflow-y-auto pr-1" aria-label="Main navigation">
+        {visibleGroups.map((group, groupIndex) => <section key={group.id} className={cn(groupIndex > 0 && "mt-4")} aria-labelledby={`nav-group-${group.id}`}>
+          <p id={`nav-group-${group.id}`} className="px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-white/45">{group.label}</p>
+          <div className="mt-1 grid gap-1">
+            {group.items.map((item) => { const Icon = item.icon; const active = view === item.id; return <button key={item.id} onClick={() => onNavigate(item.id)} className={cn("flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-xl px-3 text-left text-sm font-medium transition-colors", active ? "bg-[#f4e90b] text-[#173b27]" : "text-white/70 hover:bg-white/[.08] hover:text-white")}><Icon size={19} weight={active ? "fill" : "regular"} />{item.label}</button>; })}
+          </div>
+        </section>)}
       </nav>
       <div className="mt-4 border-t border-white/10 pt-4"><div className="mb-3 flex items-center gap-3 rounded-xl bg-white/[.055] p-3"><div className="grid size-9 place-items-center rounded-lg bg-white/10 text-xs font-bold">{initials(currentUser.fullName)}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{currentUser.fullName}</p><p className="text-xs text-white/45">{formatRole(currentUser.role)}</p></div></div><form action={logout}><button className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm text-white/60 hover:bg-white/[.07] hover:text-white" type="submit"><SignOut size={19} />Sign out</button></form></div>
     </aside>

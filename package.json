@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "db:master": "node scripts/build-master-sql.mjs",
+    "db:master:check": "node scripts/build-master-sql.mjs --check",
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run",

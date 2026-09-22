@@ -14,18 +14,20 @@ npx supabase link --project-ref YOUR_PROJECT_REF
 npx supabase db push
 ```
 
-The migrations create the application schema, role helpers, profile trigger, expiry validation, protected inventory read models, product registration, barcode aliases, atomic stock receiving, receipt-based sales, returns, business-day verification, indexes, grants, and Row-Level Security policies. `supabase/seed.sql` contains repeatable synthetic development data and must not be applied to a production database.
+The migrations create the application schema, role helpers, profile trigger, expiry validation, protected inventory read models, product registration, barcode aliases, atomic stock receiving, receipt-based sales, returns, business-day verification, reports, rate limits, indexes, grants, and Row-Level Security policies. `supabase/seed.sql` contains repeatable synthetic development data and must not be applied to a production database.
 
-For a hosted development project, apply the migrations in filename order:
+## Master SQL installer
 
-1. `20260915000100_initial_production_schema.sql`
-2. `20260915000200_inventory_read_models.sql`
-3. `20260915000300_sales_workflow.sql`
-4. `20260915000400_sales_verification_and_returns.sql`
-5. `20260916000100_manila_business_date.sql`
-6. `20260916000200_fix_sale_total_initialization.sql`
-7. `20260916000300_recent_sales_picker.sql`
-8. `20260916000400_product_registration_and_receiving.sql`
+`supabase/master.sql` is the complete database installer for a new, empty Supabase project. Open the project's SQL editor, paste the file, and run it once. The installer is transactional and stops before making changes if it detects an existing South Emerald schema.
+
+Do not use the master installer to upgrade an existing database. Apply new files from `supabase/migrations` in filename order or use `npx supabase db push` instead. The migration files remain the source of truth.
+
+Regenerate and verify the master installer after adding or editing a migration:
+
+```powershell
+npm run db:master
+npm run db:master:check
+```
 
 Then open the SQL editor and run `supabase/seed.sql` if you want the ten development products and their initial inventory batches. The seed is repeatable but resets those fixed development batches to their declared quantities, so do not rerun it after recording test sales unless that reset is intentional.
 
