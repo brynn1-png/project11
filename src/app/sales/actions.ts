@@ -192,7 +192,30 @@ export async function requestSaleReturn(input: z.infer<typeof returnRequestSchem
 }
 
 export type BusinessDaySummary = { id: string; businessDate: string; status: "open" | "pending_review" | "verified"; saleCount: number; itemCount: number; grossTotal: number; returnCount: number };
+export type BusinessDaySale = { saleNumber: string; soldAt: string; cashierName: string; totalAmount: number; items: Array<{ productName: string; quantity: number; unitPrice: number; lineTotal: number }> };
 export type PendingReturnSummary = { id: string; businessDayId: string; returnNumber: string; saleNumber: string; reason: string; requestedBy: string; requestedAt: string; itemCount: number; items: Array<{ productName: string; quantity: number; disposition: "restock" | "damaged" | "expired" }> };
+
+type BusinessDaySaleRow = { sale_number: number | string; sold_at: string; cashier_name: string; total_amount: number | string; items: Array<{ product_name: string; quantity: number | string; unit_price: number | string; line_total: number | string }> };
+
+export async function loadBusinessDaySales(id: string): Promise<{ ok: true; sales: BusinessDaySale[] } | { ok: false; message: string }> {
+  const user = await getCurrentUser();
+  if (!user || !hasPermission(user.role, "sales:verify")) return { ok: false, message: "Manager access is required." };
+  const parsed = z.uuid().safeParse(id);
+  if (!parsed.success) return { ok: false, message: "Daily sales record is invalid." };
+  const limit = await consumeRateLimit("history_read");
+  if (!limit.allowed) return { ok: false, message: rateLimitMessage(limit) };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_business_day_sales", { p_business_day_id: parsed.data });
+  if (error) {
+    console.error("Business day sales lookup failed", error);
+    return { ok: false, message: "Sales for this day could not be loaded." };
+  }
+  return { ok: true, sales: ((data ?? []) as BusinessDaySaleRow[]).map((row) => ({
+    saleNumber: String(row.sale_number), soldAt: row.sold_at, cashierName: row.cashier_name,
+    totalAmount: Number(row.total_amount),
+    items: row.items.map((item) => ({ productName: item.product_name, quantity: Number(item.quantity), unitPrice: Number(item.unit_price), lineTotal: Number(item.line_total) })),
+  })) };
+}
 
 export async function loadSalesVerification(): Promise<{ days: BusinessDaySummary[]; returns: PendingReturnSummary[]; error?: string }> {
   const user = await getCurrentUser();

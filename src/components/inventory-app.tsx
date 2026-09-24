@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
-  ArrowCounterClockwise, ArrowDown, ArrowUp, Bell, CaretRight, ChartBar,
-  Check, CirclesFour, ClockCounterClockwise, List,
-  Package, Scan, ShoppingCart, SignOut, Storefront, Users, Warning, X,
+  ArrowCounterClockwise, ArrowDown, ArrowUp, Bell, BookOpen, CaretRight, ChartBar,
+  Check, CirclesFour, ClockCounterClockwise, List, Moon,
+  Package, Scan, ShoppingCart, SignOut, Storefront, Sun, Users, Warning, X,
 } from "@phosphor-icons/react";
 import { logout } from "@/app/login/actions";
 import { useInventory } from "@/components/inventory-provider";
@@ -28,6 +28,7 @@ import { formatQuantity, pluralizeUnit } from "@/lib/units";
 import { formatRole, hasPermission, type Permission } from "@/lib/auth/permissions";
 import type { CurrentUser } from "@/lib/auth/current-user";
 import { APP_SHORT_NAME } from "@/lib/ui-copy";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type View = "dashboard" | "products" | "sales" | "returns" | "stock-in" | "inventory" | "transactions" | "sales-review" | "reports" | "users";
 type InventoryFilter = "All" | "In Stock" | "Low Stock" | "Out of Stock";
@@ -110,6 +111,9 @@ function peso(value: number) {
 export function InventoryApp({ currentUser, users, dataError }: { currentUser: CurrentUser; users: UserProfile[]; dataError: string | null }) {
   const [view, setView] = useState<View>("dashboard");
   const [mobileNav, setMobileNav] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
   const [toast, setToast] = useState("");
   const [receivingProductId, setReceivingProductId] = useState<string | null>(null);
   const [startProductRegistration, setStartProductRegistration] = useState(false);
@@ -117,13 +121,47 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
   const [inventoryFilter, setInventoryFilter] = useState<InventoryFilter>("All");
   const notificationRef = useRef<HTMLDivElement>(null);
   const notificationButtonRef = useRef<HTMLButtonElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
   const toastTimerRef = useRef<number | null>(null);
   const reduceMotion = useReducedMotion();
-  const { products, dataSource, lastSyncedAt } = useInventory();
+  const { products, dataSource } = useInventory();
   const stockAlerts = useMemo(() => getStockAlerts(products), [products]);
   const previousAlertCount = useRef(stockAlerts.length);
   const [alertAttention, setAlertAttention] = useState(false);
   const canReceiveStock = hasPermission(currentUser.role, "stock:receive");
+
+  useEffect(() => {
+    const savedTheme = window.localStorage.getItem("south-emerald-theme");
+    const isDark = savedTheme === "dark";
+    setDarkMode(isDark);
+    document.documentElement.classList.toggle("dark", isDark);
+  }, []);
+
+  useEffect(() => {
+    if (!profileOpen) return;
+    function closeOnOutsidePointer(event: PointerEvent) {
+      if (!profileRef.current?.contains(event.target as Node)) setProfileOpen(false);
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setProfileOpen(false);
+      profileButtonRef.current?.focus();
+    }
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [profileOpen]);
+
+  function toggleTheme() {
+    const nextDark = !darkMode;
+    setDarkMode(nextDark);
+    document.documentElement.classList.toggle("dark", nextDark);
+    window.localStorage.setItem("south-emerald-theme", nextDark ? "dark" : "light");
+  }
 
   useEffect(() => {
     const previousCount = previousAlertCount.current;
@@ -198,19 +236,18 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
       <Sidebar currentUser={currentUser} view={view} open={mobileNav} onClose={() => setMobileNav(false)} onNavigate={(next) => { navigate(next); setMobileNav(false); }} />
 
       <div className="lg:pl-[264px]">
-        <header className="no-print sticky top-0 z-20 flex h-16 items-center justify-between border-b border-[var(--border)] bg-[color:rgba(247,249,242,.92)] px-4 backdrop-blur-md sm:px-6 lg:px-8">
+        <header className="no-print sticky top-0 z-20 flex h-16 items-center justify-between border-b border-[var(--border)] bg-[var(--header)] px-4 sm:px-6 lg:px-8">
           <button className="grid size-11 place-items-center rounded-xl hover:bg-[var(--muted)] lg:hidden" onClick={() => setMobileNav(true)} aria-label="Open navigation"><List size={22} /></button>
           <div className="hidden items-center gap-2 text-sm text-[var(--muted-foreground)] lg:flex"><span>South Emerald</span><CaretRight size={14} /><span className="font-semibold text-[var(--foreground)]">{VIEW_TITLES[view]}</span></div>
           <div className="ml-auto flex items-center gap-2">
-            <span className="hidden rounded-lg bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-bold text-[var(--accent-strong)] sm:inline" title={lastSyncedAt ? `Last synchronized ${formatDate(lastSyncedAt)}` : undefined}>{dataSource === "live" ? "Live inventory" : dataSource === "cached" ? "Cached inventory" : "Data unavailable"}</span>
             <div className="relative" ref={notificationRef}>
               <button
                 ref={notificationButtonRef}
                 className={cn(
-                  "relative flex min-h-11 items-center justify-center gap-2 rounded-xl transition-[background-color,border-color,color,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2",
+                  "relative flex min-h-10 items-center justify-center gap-2 rounded-xl transition-[background-color,border-color,color,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2",
                   stockAlerts.length > 0
-                    ? "min-w-11 border border-amber-300 bg-amber-50 px-2 text-amber-950 hover:bg-amber-100 sm:px-3"
-                    : "size-11 text-[var(--muted-foreground)] hover:bg-[var(--muted)]",
+                    ? "min-w-10 border border-[var(--alert-border)] bg-[var(--alert-soft)] px-2.5 text-[var(--alert-foreground)] hover:border-[var(--alert-foreground)] sm:px-3"
+                    : "size-10 text-[var(--muted-foreground)] hover:bg-[var(--muted)]",
                   alertAttention && "stock-alert-attention",
                 )}
                 aria-label={stockAlerts.length === 0 ? "No stock alerts" : `${stockAlerts.length} stock alert${stockAlerts.length === 1 ? "" : "s"}`}
@@ -218,11 +255,11 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
                 aria-controls="stock-alerts-panel"
                 onClick={() => setNotificationOpen((open) => !open)}
               >
-                <Bell aria-hidden="true" size={20} weight={stockAlerts.length > 0 ? "fill" : "regular"} />
+                <Bell aria-hidden="true" size={20} weight={stockAlerts.length > 0 ? "fill" : "regular"} className={stockAlerts.length > 0 ? "text-[var(--alert-foreground)]" : undefined} />
                 {stockAlerts.length > 0 && (
                   <>
-                    <span aria-hidden="true" className="hidden text-xs font-bold sm:inline">Stock alerts</span>
-                    <span aria-hidden="true" className="grid min-h-5 min-w-5 place-items-center rounded-md bg-red-700 px-1.5 text-[0.6875rem] font-bold leading-none text-white">{stockAlerts.length > 99 ? "99+" : stockAlerts.length}</span>
+                    <span aria-hidden="true" className="hidden text-xs font-semibold sm:inline">Stock alerts</span>
+                    <span aria-hidden="true" className="grid min-h-5 min-w-5 place-items-center rounded-md bg-[var(--alert-foreground)] px-1.5 text-[0.6875rem] font-bold leading-none text-white">{stockAlerts.length > 99 ? "99+" : stockAlerts.length}</span>
                   </>
                 )}
               </button>
@@ -240,12 +277,12 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
                     <div className="max-h-[min(26rem,calc(100dvh-8rem))] overflow-y-auto p-2">
                       {stockAlerts.map((alert) => (
                         <button key={alert.product.databaseId} className="flex min-h-16 w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-[var(--muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ring)]" onClick={() => openStockAlert(alert)}>
-                          <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl", alert.status === "Out of Stock" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700")}><Warning size={18} weight="fill" /></span>
+                          <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl", alert.status === "Out of Stock" ? "bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300" : "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300")}><Warning size={18} weight="fill" /></span>
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-semibold">{alert.product.name}</span>
                             <span className="mt-0.5 block text-xs text-[var(--muted-foreground)]">{formatQuantity(alert.product.stock, alert.product.unit)} available · Restock at {formatQuantity(alert.product.minimumStock, alert.product.unit)}</span>
                           </span>
-                          <span className={cn("shrink-0 text-xs font-bold", alert.status === "Out of Stock" ? "text-red-700" : "text-amber-700")}>{alert.status}</span>
+                          <span className={cn("shrink-0 text-xs font-bold", alert.status === "Out of Stock" ? "text-red-700 dark:text-red-300" : "text-amber-700 dark:text-amber-300")}>{alert.status}</span>
                         </button>
                       ))}
                     </div>
@@ -259,7 +296,16 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
                 </section>
               )}
             </div>
-            <div className="ml-1 grid size-9 place-items-center rounded-xl bg-[#24483a] text-sm font-bold text-white">{initials(currentUser.fullName)}</div>
+            <div className="relative ml-1" ref={profileRef}>
+              <button ref={profileButtonRef} type="button" onClick={() => setProfileOpen((open) => !open)} aria-label={`Profile menu for ${currentUser.fullName}`} aria-expanded={profileOpen} aria-controls="profile-menu" className="grid size-10 place-items-center rounded-xl bg-[#24483a] text-sm font-bold text-white transition-colors hover:bg-[#316049] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2">{initials(currentUser.fullName)}</button>
+              {profileOpen && <section id="profile-menu" aria-label="Profile menu" className="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] shadow-[0_18px_50px_rgba(12,45,33,.16)]">
+                <div className="border-b border-[var(--border)] p-4"><p className="truncate font-bold">{currentUser.fullName}</p><p className="mt-1 truncate text-sm text-[var(--muted-foreground)]">{currentUser.email}</p><span className="mt-3 inline-flex rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent-strong)]">{formatRole(currentUser.role)}</span></div>
+                <div className="grid gap-1 p-2">
+                  <button type="button" onClick={() => { setProfileOpen(false); setManualOpen(true); }} className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-left text-sm font-medium hover:bg-[var(--muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"><BookOpen size={19} />How to use this system</button>
+                  <button type="button" onClick={toggleTheme} className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-left text-sm font-medium hover:bg-[var(--muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]">{darkMode ? <Sun size={19} /> : <Moon size={19} />}{darkMode ? "Switch to light theme" : "Switch to dark theme"}</button>
+                </div>
+              </section>}
+            </div>
           </div>
         </header>
 
@@ -284,6 +330,21 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
           </div>
         </main>
       </div>
+
+      <Dialog open={manualOpen} onOpenChange={setManualOpen}>
+        <DialogContent className="max-h-[88dvh] max-w-2xl overflow-y-auto">
+          <DialogHeader><DialogTitle>How to use South Emerald</DialogTitle><DialogDescription>A quick guide to the daily inventory and sales workflows.</DialogDescription></DialogHeader>
+          <div className="grid gap-6 text-sm leading-6 text-[var(--muted-foreground)]">
+            <section><h3 className="font-bold text-[var(--foreground)]">Start here</h3><p>Use the sidebar to open the areas available to your staff role. The Dashboard shows stock health, recent activity, and shortcuts. The stock alert bell opens affected products and offers the next available action.</p></section>
+            <section><h3 className="font-bold text-[var(--foreground)]">Record a sale</h3><p>Open Sales, scan or enter each product, adjust quantities, enter the cash received, then confirm the sale. Review or print the receipt before starting another sale. A live database connection is required to complete checkout.</p></section>
+            <section><h3 className="font-bold text-[var(--foreground)]">Receive stock</h3><p>Open Receive Stock or use a product shortcut. Select or scan the product, enter quantity and batch details such as cost and expiry, then submit the receipt. New products can be registered from Products by staff with permission.</p></section>
+            <section><h3 className="font-bold text-[var(--foreground)]">Manage products and stock</h3><p>Products is the catalog for product details, categories, barcodes, and archived items. Stock Levels is a read-only view for filtering products by availability. Keep each product's minimum stock level current so alerts are useful.</p></section>
+            <section><h3 className="font-bold text-[var(--foreground)]">Handle a return</h3><p>Open Returns, find the original sale, select returned quantities and item condition, then submit the request. A manager or administrator reviews pending requests in Daily Verification. Only approved resellable items go back into available stock.</p></section>
+            <section><h3 className="font-bold text-[var(--foreground)]">Review records</h3><p>Activity & Receipts contains stock movements, sales receipts, and customer returns. Reports provides date-based sales and inventory summaries. In Daily Verification, submit business-day records for review and mark them verified after pending returns are resolved.</p></section>
+            <p className="border-t border-[var(--border)] pt-4 text-xs">Your role controls which pages and actions are available. Use the profile menu to check the signed-in account, change the theme, or sign out from the sidebar.</p>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AnimatePresence>
         {toast && <motion.div role="status" initial={reduceMotion ? { opacity: 0 } : { opacity: 0, transform: "translateY(100%)" }} animate={{ opacity: 1, transform: "translateY(0%)" }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, transform: "translateY(100%)" }} transition={{ duration: reduceMotion ? 0.2 : 0.4, ease: "easeInOut" }} className="fixed bottom-5 right-5 z-50 flex max-w-sm items-start gap-3 rounded-2xl bg-[#16452e] px-4 py-3 text-sm font-medium text-white shadow-[0_14px_40px_rgba(12,45,33,.22)]"><Check size={18} weight="bold" className="mt-0.5 shrink-0 text-[#f4e90b]" />{toast}</motion.div>}

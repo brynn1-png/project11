@@ -57,7 +57,7 @@ This document describes the user-facing pages and the main paths between them in
 
 **Purpose:** Review business-day sales totals and resolve pending return requests.
 
-**Flow:** Review a day's sale count, items, returns, and gross sales. Submit an open day for review, then mark a submitted day verified when ready. Any pending returns for that day must be reviewed first. Approve or reject each pending return here; only approved resellable items return to available inventory. A daily record is created automatically when the first sale is confirmed.
+**Flow:** Expand a day's record to load and inspect every completed sale, including cashier, receipt total, and line items. Review the day's summary and returns, then submit an open day for review or mark a submitted day verified. Any pending returns for that day must be reviewed first. Approve or reject each pending return here; only approved resellable items return to available inventory. A daily record is created automatically when the first sale is confirmed.
 
 ### Reports
 
