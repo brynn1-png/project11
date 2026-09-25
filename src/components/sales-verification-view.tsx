@@ -67,6 +67,7 @@ export function SalesVerificationView({ notify }: { notify: (message: string) =>
     <Card className="border-[var(--border)] bg-[var(--surface)] shadow-none"><CardHeader><CardTitle>Daily sales records</CardTitle><CardDescription>Open a day to review every completed sale before submitting or verifying its records.</CardDescription></CardHeader><CardContent className="flex flex-col gap-3">{days.length === 0 ? <p className="py-8 text-center text-sm text-[var(--muted-foreground)]">A daily record will open automatically when the first sale is confirmed.</p> : days.map((day) => {
       const hasPendingReturn = returns.some((item) => item.businessDayId === day.id);
       const expanded = expandedDayId === day.id;
+      const sales = daySales[day.id] ?? [];
       return <article key={day.id} className="overflow-hidden rounded-xl border border-[var(--border)]">
         <div className="grid gap-4 p-4 lg:grid-cols-[minmax(180px,1fr)_repeat(4,100px)_auto] lg:items-center">
           <div className="min-w-0">
@@ -88,8 +89,8 @@ export function SalesVerificationView({ notify }: { notify: (message: string) =>
           <h3 className="mb-3 text-sm font-bold">Sales for {date(day.businessDate)}</h3>
           {salesLoadingDayId === day.id ? <Skeleton className="h-20 rounded-xl" />
             : salesErrors[day.id] ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800"><span>{salesErrors[day.id]}</span><Button variant="secondary" size="sm" onClick={() => void fetchDaySales(day.id)}>Try again</Button></div>
-              : (daySales[day.id] ?? []).length === 0 ? <p className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">No completed sales were recorded for this day.</p>
-                : <div className="grid gap-3">{daySales[day.id].map((sale) => <SaleReviewCard key={sale.saleNumber} sale={sale} />)}</div>}
+              : sales.length === 0 ? <p className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">No completed sales were recorded for this day.</p>
+                : <div className="grid gap-3">{sales.map((sale) => <SaleReviewCard key={sale.saleNumber} sale={sale} />)}</div>}
         </div>}
       </article>;
     })}</CardContent></Card>
