@@ -12,7 +12,7 @@ export default async function Home() {
 
   return (
     <InventoryProvider products={inventory.products} transactions={inventory.transactions} serverAvailable={!inventory.error} cacheScope={`${user.id}:${user.role}`}>
-      <InventoryApp currentUser={user} users={inventory.users} dataError={inventory.error} />
+      <InventoryApp currentUser={user} users={inventory.users} dataError={inventory.error} usersError={inventory.usersError} />
     </InventoryProvider>
   );
 }

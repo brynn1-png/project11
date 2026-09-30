@@ -66,6 +66,13 @@ describe("role permissions", () => {
     expect(hasPermission("cashier", "stock:receive")).toBe(false);
   });
 
+  it("limits staff account management to administrators", () => {
+    expect(hasPermission("administrator", "users:manage")).toBe(true);
+    expect(hasPermission("manager", "users:manage")).toBe(false);
+    expect(hasPermission("inventory_staff", "users:manage")).toBe(false);
+    expect(hasPermission("cashier", "users:manage")).toBe(false);
+  });
+
   it("formats the inventory staff role for display", () => {
     expect(formatRole("inventory_staff")).toBe("Inventory Staff");
   });

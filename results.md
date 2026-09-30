@@ -1,10 +1,29 @@
 # Results Log
 
 ## Current State Summary (Updated: 2026-09-30)
-- **Active Task:** Task #032 — Barcode scanning on Register a product
-- **Status:** 🟢 Implemented and locally verified
-- **Latest Result:** The product form now fills its Barcode field from a scan, with no mouse needed per scan
-- **Verification:** 89 tests passed across 15 files, typecheck passed, changed files lint clean, production build passed
+- **Active Task:** Task #033 — Staff Accounts: add employee, change role, deactivate
+- **Status:** 🟢 Implemented; migration and service role key must be applied before use
+- **Latest Result:** Administrators can now add employee accounts and change roles or status from the app
+- **Verification:** 104 tests passed across 15 files, typecheck passed, changed files lint clean, production build passed, master.sql verified current
+
+---
+
+## 2026-09-30 — Task #033: Staff Accounts Management Result
+**Outcome:** The Staff Accounts page can now create an employee sign-in, change any staff member's role, and deactivate or reactivate an account. The Supabase dashboard is no longer required.
+**Listing result:** Each row now shows the employee's email alongside name, role, and status. The email comes from a new `profiles.email` column, backfilled from `auth.users` and populated automatically for future sign-ins by the existing trigger.
+**Role result:** A role select per row offers all four roles with an inline save step. Changes are refused for the signed-in administrator's own row, and refused for the last active administrator.
+**Status result:** Deactivate and Reactivate use the existing `account_status` column, which previously had no interface at all.
+**Audit result:** Every role change, status change, and account creation writes an `audit_logs` row recording the previous and new values, matching how products, stock, and sales already record their changes.
+**Security result:** Both actions require `users:manage`, which only `administrator` holds. The direct `update` grant on `profiles` and the `profiles_update` policy were removed so the new guards cannot be bypassed with a direct API call.
+**Validation result:** Starting passwords must be at least 8 characters. Emails are normalized to lowercase, checked against existing accounts, and protected by a unique index.
+**Failure result:** If the role cannot be applied after the sign-in is created, the new sign-in is deleted so no half-configured account is left behind.
+**Prerequisite result:** Adding an account requires `SUPABASE_SERVICE_ROLE_KEY` in the server environment; role and status changes work without it and report a clear message if it is missing. The key is read only in server-only modules and is never sent to the browser or logged.
+**Verification results:** 104 tests passed across 15 files, including 10 new staff validation tests, 4 new admin environment tests, and a new assertion that only `administrator` holds `users:manage`. Typecheck passed, ESLint reported no problems in any changed file, the production build compiled, and `npm run db:master:check` confirms `master.sql` matches the 22 migrations.
+**Not covered by automated tests:** The lockout guards, the last-administrator refusal, and the self-change refusal are enforced in SQL and can only be exercised against a real database. They were deliberately not mirrored into TypeScript, because a test against a copy of the rule proves nothing.
+**Setup still required:** Apply `20260930000100_staff_account_management.sql` and add `SUPABASE_SERVICE_ROLE_KEY` to `.env.local`. Until both are done the page loads but changes fail with a migration message.
+**Flagged, unrelated:** `npm run lint` still reports the same 2 pre-existing errors in `src/components/inventory-app.tsx` (a `setState` inside an effect, and an unescaped apostrophe). That file is modified by this task only to swap in the new view, and neither error is in the changed lines.
+**Corrected during the task:** The first version of `src/lib/validation/auth.test.ts` overwrote the existing login validation tests. They were restored and the new staff tests were appended; the file's diff is now additive only.
+**Failure isolation fix:** The console error reported from `getInventorySnapshot` was caused by the hosted database not yet having the new `profiles.email` column. Diagnosed from the environment: the app targets a hosted Supabase project via `.env`, with no `.env.local` and no service role key available in this environment, so the migration could not be applied from here. That failure also revealed a defect introduced by this task, now fixed. A staff-list failure no longer blanks products and transactions across the whole app; the catalog and activity reads decide the snapshot error alone, and a profiles failure is logged separately and reported on the Staff Accounts page as "Staff accounts could not be loaded." The Add employee button is hidden while the list is unavailable, since creating an account without a working list would be confusing. Verification after the fix: 104 tests passed, typecheck passed, ESLint clean on the changed files, production build compiled.
 
 ---
 

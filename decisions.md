@@ -1,10 +1,26 @@
 # Decision Log
 
 ## Current State Summary (Updated: 2026-09-30)
-- **Active Decision:** Capture scans on the product form through two routes and never hijack keystrokes from other fields
+- **Active Decision:** Manage staff accounts through audited RPCs guarded against self-lockout, with account creation via the Supabase Admin API
 - **Status:** 🟢 Confirmed
-- **Latest Decision:** Reject Enter-burst hijacking from other inputs; keep F9 as the forced route
-- **Open Questions:** Live scanner acceptance; two pre-existing lint errors in `inventory-app.tsx`
+- **Latest Decision:** The administrator sets the employee's starting password; no generated password and no email invite
+- **Open Questions:** Forced password change at first sign-in; live browser acceptance of the guards
+
+---
+
+## 2026-09-30 — Task #033: Staff Account Management
+**Decision:** Add employee accounts and role/status changes to the Staff Accounts page, administrator only.
+**Why:** Account creation was possible only from the Supabase dashboard, so access control was a manual database task outside the application.
+**Authorization:** Both actions require `users:manage`, which only `administrator` holds. The permission check lives in the server action and again inside the database function, because the service role key bypasses row-level security entirely.
+**Role changes:** Applied through a new `update_staff_account` security-definer function rather than the existing `profiles_update` policy, so every change writes an audit log row and passes the lockout guards. The direct `update` grant on `profiles` was revoked and the policy dropped, because leaving them in place would let those guards be bypassed with a direct API call. No application code depended on that grant.
+**Lockout guards:** An administrator cannot change their own role or status, and the last active administrator cannot be demoted or deactivated. Both are enforced server-side, not by hiding controls. The administrator's own row is read-only in the interface as a convenience only.
+**Account creation:** Uses the Supabase Admin API, which requires a new server-only `SUPABASE_SERVICE_ROLE_KEY`. Inserting into `auth.users` from SQL was rejected because it depends on GoTrue internals and bypasses confirmation handling.
+**Password handling:** The administrator types the employee's starting password, which must be at least 8 characters. Chosen over a generated password and over an email invite; the invite option was rejected because it needs working SMTP, and Supabase's built-in email service is rate-limited and often undeliverable. A forced change at first sign-in was deferred as a follow-up.
+**Failure handling:** If the role cannot be applied after the auth user is created, the new auth user is deleted so no half-configured account is left behind.
+**UI shape:** Rejected promote/demote buttons. With four roles a two-button model cannot express manager versus inventory staff, and "demote" has no defined target. A role select per row with an inline save step is used instead, and deactivate/reactivate reuses the existing `account_status` column which previously had no interface at all.
+**Rate limiting:** Added a `staff_write` scope at 20 requests per hour. Account creation consumes it twice, once in the action and once inside the function, which caps real account creation at roughly ten per hour.
+**Audit trail:** Role and status changes record the previous and new values. Account creation records a `staff.created` entry, and the function only accepts that flag for a profile created in the last five minutes so an old account cannot be relabelled as new.
+**Failure isolation:** `getInventorySnapshot` originally failed as a unit. Adding `profiles.email` meant a pending migration could blank products and transactions across the whole app over a column only the staff page needs. The catalog and activity RPCs now decide the snapshot error on their own, while a profiles failure is logged separately and surfaced as `usersError` on the Staff Accounts page. A future schema drift in any one read model now degrades one page instead of the application. An empty-state message that is really a load failure is misleading, so the error is shown rather than a blank table.
 
 ---
 

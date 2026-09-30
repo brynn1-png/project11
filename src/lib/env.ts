@@ -33,3 +33,26 @@ export function isSupabaseConfigured() {
   return readSupabasePublicConfig() !== null;
 }
 
+const supabaseAdminEnvSchema = z.object({
+  url: z.url("NEXT_PUBLIC_SUPABASE_URL must be a valid URL."),
+  serviceRoleKey: z.string().min(20, "SUPABASE_SERVICE_ROLE_KEY is incomplete."),
+});
+
+export type SupabaseAdminConfig = z.infer<typeof supabaseAdminEnvSchema>;
+
+export function readSupabaseAdminConfig(
+  source: Record<string, string | undefined> = process.env,
+): SupabaseAdminConfig | null {
+  const url = source.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = source.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) return null;
+
+  const parsed = supabaseAdminEnvSchema.safeParse({ url, serviceRoleKey });
+  return parsed.success ? parsed.data : null;
+}
+
+export function isSupabaseAdminConfigured() {
+  return readSupabaseAdminConfig() !== null;
+}
+

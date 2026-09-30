@@ -1,11 +1,31 @@
 # Progress Log
 
 ## Current State Summary (Updated: 2026-09-30)
-- **Active Task:** Task #032 — Barcode scanning on Register a product
-- **Status:** 🟢 Implemented and locally verified
-- **Next Action:** Verify scanning with a physical scanner in the browser
-- **Blockers:** Live hardware verification remains external; two pre-existing lint errors in `inventory-app.tsx` are unrelated to this work
-- **Last Completed:** Task #032 Barcode scanning on product registration on 2026-09-30
+- **Active Task:** Task #033 — Staff Accounts: add employee, change role, deactivate
+- **Status:** 🟢 Implemented; migration and service role key must be applied before use
+- **Next Action:** Apply `20260930000100_staff_account_management.sql`, set `SUPABASE_SERVICE_ROLE_KEY`, then verify in the browser
+- **Blockers:** Requires a hosted migration and a server-side service role key, neither of which is applied yet
+- **Last Completed:** Task #033 Staff Accounts management on 2026-09-30
+
+---
+
+## 2026-09-30 — Task #033: Staff Accounts Management
+**Status:** 🟢 Implemented and locally verified; awaiting migration and environment setup
+**Summary:** Added the ability to create employee accounts and change any staff member's role or status from the Staff Accounts page, replacing the Supabase dashboard workflow.
+**Steps completed:**
+- [x] Confirm the problem: no insert path on `profiles`, and the Staff Accounts list had no email
+- [x] Present the plan with stakes and effects, and get approval
+- [x] Migration: `profiles.email` with backfill, trigger update, `update_staff_account` RPC, `staff_write` rate-limit scope
+- [x] Close the direct-update bypass by revoking `update` on `profiles` and dropping the `profiles_update` policy
+- [x] Add the service role key configuration and a server-only admin client
+- [x] Add staff validation schemas
+- [x] Add permission-gated, rate-limited `createStaffAccount` and `updateStaffAccount` actions
+- [x] Include email in the staff list read model
+- [x] Build `staff-accounts-view.tsx` with an add-employee form, a role select per row, and deactivate/reactivate
+- [x] Add tests and run lint, tests, typecheck, and the production build
+- [x] Diagnose the `getInventorySnapshot` console error reported after implementation
+- [x] Stop a staff-list failure from blanking the whole app, and report it on the Staff Accounts page instead
+**Notes:** The admin sets the employee's starting password. Adding an account requires `SUPABASE_SERVICE_ROLE_KEY`; role changes do not. The administrator's own row cannot be edited. The snapshot no longer treats a staff-list failure as a total inventory failure.
 
 ---
 

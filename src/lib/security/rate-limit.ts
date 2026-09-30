@@ -11,7 +11,8 @@ export type RateLimitScope =
   | "reports_read"
   | "history_read"
   | "sales_read"
-  | "inventory_read";
+  | "inventory_read"
+  | "staff_write";
 
 type RateLimitRow = {
   allowed: boolean;

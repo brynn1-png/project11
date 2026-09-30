@@ -40,6 +40,7 @@ type ActivityRow = {
 type ProfileRow = {
   id: string;
   full_name: string;
+  email: string;
   role: AppRole;
   status: "active" | "inactive";
 };
@@ -49,12 +50,13 @@ export type InventorySnapshot = {
   transactions: StockTransaction[];
   users: UserProfile[];
   error: string | null;
+  usersError: string | null;
 };
 
 export async function getInventorySnapshot(role: AppRole): Promise<InventorySnapshot> {
   const supabase = await createClient();
   const profilesRequest = role === "administrator"
-    ? supabase.from("profiles").select("id, full_name, role, status").order("full_name")
+    ? supabase.from("profiles").select("id, full_name, email, role, status").order("full_name")
     : Promise.resolve({ data: [], error: null });
 
   const [catalogResult, activityResult, profilesResult] = await Promise.all([
@@ -63,15 +65,20 @@ export async function getInventorySnapshot(role: AppRole): Promise<InventorySnap
     profilesRequest,
   ]);
 
-  const errors = [catalogResult.error, activityResult.error, profilesResult.error].filter(Boolean);
-  if (errors.length > 0) {
-    console.error("Unable to load inventory snapshot", errors);
+  const inventoryErrors = [catalogResult.error, activityResult.error].filter(Boolean);
+  if (inventoryErrors.length > 0) {
+    console.error("Unable to load inventory snapshot", inventoryErrors);
     return {
       products: [],
       transactions: [],
       users: [],
       error: "Inventory data could not be loaded. Apply the latest database migration, then refresh this page.",
+      usersError: null,
     };
+  }
+
+  if (profilesResult.error) {
+    console.error("Unable to load staff accounts", profilesResult.error);
   }
 
   const products = ((catalogResult.data ?? []) as CatalogRow[]).map((row) => ({
@@ -108,12 +115,23 @@ export async function getInventorySnapshot(role: AppRole): Promise<InventorySnap
     notes: row.notes ?? undefined,
   }));
 
-  const users = ((profilesResult.data ?? []) as ProfileRow[]).map((row) => ({
-    id: row.id,
-    fullName: row.full_name,
-    role: row.role,
-    status: row.status,
-  }));
+  const users = profilesResult.error
+    ? []
+    : ((profilesResult.data ?? []) as ProfileRow[]).map((row) => ({
+        id: row.id,
+        fullName: row.full_name,
+        email: row.email,
+        role: row.role,
+        status: row.status,
+      }));
 
-  return { products, transactions, users, error: null };
+  return {
+    products,
+    transactions,
+    users,
+    error: null,
+    usersError: profilesResult.error
+      ? "Staff accounts could not be loaded. Apply the latest database migration, then refresh this page."
+      : null,
+  };
 }

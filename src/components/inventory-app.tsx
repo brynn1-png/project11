@@ -18,6 +18,7 @@ import { StockInView } from "@/components/stock-in-view";
 import { HistoryView } from "@/components/history-view";
 import { DashboardCharts } from "@/components/dashboard-charts";
 import { ReportsView } from "@/components/reports-view";
+import { StaffAccountsView } from "@/components/staff-accounts-view";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { cn } from "@/lib/utils";
@@ -108,7 +109,7 @@ function peso(value: number) {
   return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(value);
 }
 
-export function InventoryApp({ currentUser, users, dataError }: { currentUser: CurrentUser; users: UserProfile[]; dataError: string | null }) {
+export function InventoryApp({ currentUser, users, dataError, usersError }: { currentUser: CurrentUser; users: UserProfile[]; dataError: string | null; usersError: string | null }) {
   const [view, setView] = useState<View>("dashboard");
   const [mobileNav, setMobileNav] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -326,7 +327,7 @@ export function InventoryApp({ currentUser, users, dataError }: { currentUser: C
             {view === "transactions" && <HistoryView />}
             {view === "sales-review" && <SalesVerificationView notify={notify} />}
             {view === "reports" && <ReportsView notify={notify} canViewSales={hasPermission(currentUser.role, "reports:view_sales_own")} canViewAllSales={hasPermission(currentUser.role, "reports:view_sales_all")} canViewInventory={hasPermission(currentUser.role, "reports:view_inventory")} />}
-            {view === "users" && <UsersView users={users} />}
+            {view === "users" && <StaffAccountsView users={users} usersError={usersError} currentUserId={currentUser.id} canManage={hasPermission(currentUser.role, "users:manage")} notify={notify} />}
           </div>
         </main>
       </div>
@@ -450,7 +451,5 @@ function ReceiptActivityTable({ receipts }: { receipts: ReceiptActivity[] }) {
     return <tr key={receipt.id}><td className="font-semibold">{receipt.reference}</td><td><p className="font-semibold">{receipt.productCount} product{receipt.productCount === 1 ? "" : "s"}</p><p className="mt-0.5 max-w-64 truncate text-xs text-[var(--muted-foreground)]" title={productNames.join(", ")}>{productNames.join(", ")}</p></td><td><span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold", receipt.type === "Stock In" ? "bg-emerald-50 text-emerald-800" : "bg-orange-50 text-orange-800")}>{receipt.type === "Stock In" ? <ArrowDown size={13} /> : <ArrowUp size={13} />}{receipt.type === "Stock In" ? "Stock received" : "Sale"}</span></td><td className="font-bold">{receipt.totalQuantity}</td><td>{receipt.user}</td><td className="text-[var(--muted-foreground)]">{formatDate(receipt.createdAt)}</td></tr>;
   })}</tbody></table>;
 }
-
-function UsersView({ users }: { users: UserProfile[] }) { return <div className="panel overflow-hidden">{users.length > 0 ? <div className="overflow-x-auto"><table className="data-table min-w-[600px]"><thead><tr><th>User</th><th>Role</th><th>Status</th></tr></thead><tbody>{users.map((user) => <tr key={user.id}><td><div className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-[#24483a] text-xs font-bold text-white">{initials(user.fullName)}</span><span className="font-semibold">{user.fullName}</span></div></td><td>{formatRole(user.role)}</td><td><span className={cn("inline-flex rounded-full px-2.5 py-1 text-xs font-semibold", user.status === "active" ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-[#52605a]")}>{user.status === "active" ? "Active" : "Inactive"}</span></td></tr>)}</tbody></table></div> : <EmptyState title="No user profiles found" text="Authenticated user profiles will appear here." />}</div>; }
 
 function EmptyState({ title, text }: { title: string; text: string }) { return <div className="grid place-items-center px-5 py-12 text-center"><span className="grid size-12 place-items-center rounded-2xl bg-[var(--muted)] text-[var(--muted-foreground)]"><Package size={23} /></span><h3 className="mt-4 font-bold">{title}</h3><p className="mt-1 max-w-sm text-sm text-[var(--muted-foreground)]">{text}</p></div>; }

@@ -37,6 +37,7 @@ export type StockTransaction = {
 export type UserProfile = {
   id: string;
   fullName: string;
+  email: string;
   role: import("@/lib/auth/permissions").AppRole;
   status: "active" | "inactive";
 };
