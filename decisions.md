@@ -1,10 +1,34 @@
 # Decision Log
 
 ## Current State Summary (Updated: 2026-09-30)
-- **Active Decision:** Manage staff accounts through audited RPCs guarded against self-lockout, with account creation via the Supabase Admin API
+- **Active Decision:** Render the barcode print sheet outside the Radix Dialog rather than inside it, so print layout is preserved
 - **Status:** 🟢 Confirmed
-- **Latest Decision:** The administrator sets the employee's starting password; no generated password and no email invite
-- **Open Questions:** Forced password change at first sign-in; live browser acceptance of the guards
+- **Latest Decision:** Follow the shipped `ReceiptModal` precedent for printing from inside a modal instead of inventing a new print path
+- **Open Questions:** Task #033: forced password change at first sign-in; live browser acceptance of the guards. Live print acceptance for the new barcode modal still uncaptured.
+
+---
+
+## 2026-09-30 — Task #035: Print Panel as Modal
+**Decision:** Render `.barcode-print-sheet` as a sibling **outside** the Radix `Dialog`, while the controls live inside `DialogContent` marked `no-print`.
+**Why:** In `@media print` the sheet uses `position: absolute; inset: 0`. Today its nearest containing block is the initial containing block (`.panel` has no `position`), so it fills the page. Inside `DialogContent` — which is `position: fixed` — that same `inset: 0` would resolve against the dialog box and clip the printed labels to the modal dimensions.
+**Precedent followed:** `ReceiptModal` (`history-view.tsx:67-83`) already does exactly this: `DialogContent` gets `no-print`, and `SaleReceiptPrintSheet` is rendered as a sibling at line 63. Printing from inside an open Dialog is therefore a shipped, documented path.
+**Alternatives considered/rejected:**
+- *Portal the print sheet to `document.body`* — works, but adds a portal for a problem the existing pattern already solves more simply.
+- *Change `inset: 0` to `fixed` in the print rules* — would alter global print CSS used by both barcode and receipt sheets, risking a regression in working receipt printing.
+- *Move the controls inline into a custom overlay* — would bypass Radix focus trapping, Escape handling, and `aria-modal`, losing accessibility for no gain.
+**Scope:** `BarcodePrintPanel` only. `BarcodeGenerationPreview` in the add-product form is a separate export and was deliberately left untouched. No `@media print` CSS changed.
+**Risk:** Printing is the fragile part and is unverified in a live browser this session; if labels clip or the modal prints, the cause is the containing block and the fix is the sheet's placement, which is now outside the dialog.
+---
+
+## 2026-09-30 — Task #034: Table Header Alignment Fix
+**Decision:** Add `.data-table th.text-right { text-align: right; }` to `globals.css` as an explicit unlayered override.
+**Why:** The `Access` `<th>` already declared `className="text-right"`, but it never rendered. Two independent reasons: `.data-table th` has specificity 0-1-1 vs `.text-right`'s 0-1-0, and unlayered CSS beats `@layer utilities` regardless of specificity. Both had to be satisfied, so only an explicit higher-specificity unlayered rule works.
+**Alternatives considered/rejected:**
+- *`:where(th)` on the base rule* — dropping the base to 0-1-0 still leaves it unlayered, so it keeps beating the layered utility. Does not fix it.
+- *Inline `style={{ textAlign: "right" }}` on the `<th>`* — would work, but puts presentation in markup and does not fix the dead-utility class for any future table.
+- *Left-align the `Deactivate` buttons instead* — rejected. Every other table (Product Management, Archive, Receipts) right-aligns its action column; left-aligning here would break that convention and push actions away from the table edge.
+**Scope:** Exactly one `<th>` in the codebase carries a class, so the rule matches only this cell. The other 10+ tables use bare `<th>` and keep left alignment.
+**Risk:** Cosmetic-only CSS. If wrong, the header stays visibly misaligned — immediately detectable.
 
 ---
 

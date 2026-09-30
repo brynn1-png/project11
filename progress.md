@@ -1,16 +1,49 @@
 # Progress Log
 
 ## Current State Summary (Updated: 2026-09-30)
-- **Active Task:** Task #033 — Staff Accounts: add employee, change role, deactivate
-- **Status:** 🟢 Implemented; migration and service role key must be applied before use
-- **Next Action:** Apply `20260930000100_staff_account_management.sql`, set `SUPABASE_SERVICE_ROLE_KEY`, then verify in the browser
-- **Blockers:** Requires a hosted migration and a server-side service role key, neither of which is applied yet
-- **Last Completed:** Task #033 Staff Accounts management on 2026-09-30
+- **Active Task:** Task #035 — Product print panel converted to a modal
+- **Status:** 🟢 Done (static verification only; no browser screenshot available)
+- **Next Action:** None pending. Optional follow-up: print-layout radios hardcode `bg-white`, wrong in dark mode (pre-existing, out of scope).
+- **Blockers:** None. Visual acceptance still uncaptured — desktop browser not connected.
+- **Last Completed:** Task #035 Print panel as modal on 2026-09-30
 
 ---
 
+## 2026-09-30 — Task #035: Product Print Panel as Modal
+**Status:** 🟢 Done
+**Summary:** Clicking *Print* on a product row rendered an inline panel above the table, pushing the product list down. Converted to a Radix Dialog.
+**Steps completed:**
+- [x] Located actual code — `barcode-label.tsx:54` `BarcodePrintPanel`, rendered at `product-management-view.tsx:333`
+- [x] Confirmed the shipped precedent — `ReceiptModal` (`history-view.tsx:67-83`) already prints from inside a Dialog with its print sheet rendered **outside** it
+- [x] Verified `.panel` has no `position`, so `.barcode-print-sheet`'s `inset:0` currently resolves against the initial containing block (full page)
+- [x] Wrapped controls in `Dialog`/`DialogContent` with `no-print`, `DialogHeader`, `DialogTitle`, `DialogDescription`
+- [x] Removed the hand-rolled `Close` button in favour of the built-in `DialogContent` X
+- [x] Kept `.barcode-print-sheet` outside the Dialog as a fragment sibling — required so `inset:0` still resolves against the page, not the fixed dialog
+- [x] Re-indented the moved block
+- [x] `tsc --noEmit` clean, `eslint` clean, 104/104 tests pass, production build passes
+- [x] Confirmed `globals.css` diff is +1 line (Task #034 only) — `@media print` rules untouched
+- [x] Confirmed `BarcodeGenerationPreview` (add-product form) untouched and still wired at `product-management-view.tsx:295`
+- [ ] Browser screenshot / live print acceptance (blocked — no desktop browser connected)
+**Notes:** No change needed in `product-management-view.tsx`; line 333 already conditionally mounts the panel, so `<Dialog open>` is always open when mounted.
+---
+
+## 2026-09-30 — Task #034: Staff Accounts Table Header Alignment
+**Status:** 🟢 Done
+**Summary:** The `ACCESS` column header rendered left-aligned over empty space while its cell content was right-aligned. Fixed with a CSS specificity override.
+**Steps completed:**
+- [x] Located actual code — `src/components/staff-accounts-view.tsx:132` already declared `className="text-right"` on the `Access` `<th>`
+- [x] Identified root cause — `.data-table th { text-align: left }` (`globals.css:113`, specificity 0-1-1) beats Tailwind's `.text-right` (0-1-0), and unlayered CSS beats `@layer utilities` regardless of specificity
+- [x] Added `.data-table th.text-right { text-align: right; }` at `globals.css:114`
+- [x] Confirmed file content changed via re-read
+- [x] `tsc --noEmit` clean, `eslint` clean, 104/104 tests pass, production build passes
+- [x] Inspected emitted CSS — override present and unlayered
+- [x] Confirmed only 1 `<th>` in the codebase carries a class, so no other table is affected
+- [ ] Browser screenshot verification (blocked — no desktop browser connected)
+**Notes:** Rejected the `:where(th)` alternative (rewriting the base rule as `.data-table :where(th)` to drop it to 0-1-0). Even at equal specificity, unlayered CSS still beats `@layer utilities`, so the base rule would have kept winning. An explicit unlayered override was the only correct fix.
+---
+
 ## 2026-09-30 — Task #033: Staff Accounts Management
-**Status:** 🟢 Implemented and locally verified; awaiting migration and environment setup
+**Status:** 🟢 Done — migration applied and `SUPABASE_SERVICE_ROLE_KEY` set (confirmed 2026-09-30)
 **Summary:** Added the ability to create employee accounts and change any staff member's role or status from the Staff Accounts page, replacing the Supabase dashboard workflow.
 **Steps completed:**
 - [x] Confirm the problem: no insert path on `profiles`, and the Staff Accounts list had no email

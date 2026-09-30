@@ -1,10 +1,42 @@
 # Results Log
 
 ## Current State Summary (Updated: 2026-09-30)
-- **Active Task:** Task #033 — Staff Accounts: add employee, change role, deactivate
-- **Status:** 🟢 Implemented; migration and service role key must be applied before use
-- **Latest Result:** Administrators can now add employee accounts and change roles or status from the app
-- **Verification:** 104 tests passed across 15 files, typecheck passed, changed files lint clean, production build passed, master.sql verified current
+- **Active Task:** Task #035 — Product print panel converted to a modal
+- **Status:** 🟢 Done (static verification only; no browser screenshot available)
+- **Latest Result:** *Print* now opens a Radix Dialog instead of pushing an inline panel above the product table; barcode printing path preserved unchanged
+- **Verification:** 104 tests passed across 15 files, typecheck passed, lint clean, production build passed, `@media print` rules confirmed untouched; browser screenshot not captured (no desktop browser connected)
+
+---
+
+## 2026-09-30 — Task #035: Print Panel as Modal Result
+**Outcome:** Clicking *Print* on a product row now opens a modal. The previous behaviour inserted an inline `<section className="panel">` above the table, displacing the product list and leaving it displaced until closed.
+**Modal result:** Radix `Dialog` with `DialogTitle` = product name and `DialogDescription` = `Code 128 · productCode`. The hand-rolled `Close` ghost button was dropped in favour of the built-in `DialogContent` close (X with `sr-only` label), giving focus trapping and Escape handling for free.
+**Print result:** `.barcode-print-sheet` is rendered outside the `Dialog` as a fragment sibling, so `position: absolute; inset: 0` still resolves against the initial containing block and fills the printed page exactly as before. The `dialog` gets `no-print`, matching `ReceiptModal`.
+**Verification results:**
+- `tsc --noEmit`: clean
+- `eslint`: clean on both changed files
+- `vitest run`: 104/104 passing across 15 files
+- `next build`: passes
+- `git diff --stat`: `globals.css` +1 line (Task #034 only) — `@media print` block untouched
+- `BarcodeGenerationPreview` still exported and used at `product-management-view.tsx:295`
+- No leftover `barcode-print-title` references
+**Not verified:** No browser screenshot and no live print acceptance. The desktop browser was never connected this session, so both this task and Task #034 rest on static/compiled evidence rather than rendered pixels. A live click-through of *Print → dialog opens → Print label → output paginates correctly* is still outstanding.
+---
+
+## 2026-09-30 — Task #034: Table Header Alignment Result
+**Outcome:** The `ACCESS` header rendered left-aligned at x≈1131, floating over empty space, while its cell content (`Deactivate`, `Your own account`) sat right-aligned at x≈1476. The markup was already correct (`className="text-right"`); the CSS was defeating it.
+**Root cause:** `.data-table th { text-align: left }` (`globals.css:113`) has specificity 0-1-1 against Tailwind's `.text-right` at 0-1-0, and is unlayered while Tailwind v4 utilities live in `@layer utilities`. Unlayered CSS wins regardless of specificity, so both factors had to be addressed.
+**Fix:** Added `.data-table th.text-right { text-align: right; }` at `globals.css:114`. Specificity 0-2-1 and unlayered.
+**Verification results:**
+- File content re-read: change present at line 114
+- `tsc --noEmit`: clean
+- `eslint`: clean (CSS files not covered by the config)
+- `vitest run`: 104/104 passing across 15 files
+- `next build`: passes, TypeScript step included
+- Emitted `.next/static/chunks/0gj08y4kik21j.css` contains `.data-table th.text-right{text-align:right}` outside any `@layer`
+- Grep confirms exactly one `<th>` in the codebase carries a class → no other table affected
+**Not verified:** Visual confirmation in a browser. No desktop browser was connected to the session, so the planned screenshot could not be taken. The change is supported by emitted-CSS inspection rather than rendered pixels.
+**Prior task note:** Task #033 is fully complete. Migration file `supabase/migrations/20260930000100_staff_account_management.sql` is present and `SUPABASE_SERVICE_ROLE_KEY` is set in `.env` (219 chars, valid JWT prefix). *Not independently verified:* that the migration was executed against the hosted database — no DB query access from this session.
 
 ---
 

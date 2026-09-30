@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import JsBarcode from "jsbarcode";
 import { Printer } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
 type LabelProduct = { name: string; barcode: string; productCode: string };
@@ -62,36 +63,37 @@ export function BarcodePrintPanel({ product, onClose, onReceive }: { product: La
 
   const count = format === "single" ? Math.min(Math.max(copies, 1), 10) : Math.min(Math.max(copies, 1), 30);
   return (
-    <section className="panel overflow-hidden" aria-labelledby="barcode-print-title">
-      <div className="flex flex-col gap-4 border-b border-[var(--border)] p-5 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 id="barcode-print-title" className="text-lg font-bold">{product.name}</h2>
-          <p className="mt-1 text-sm text-[var(--muted-foreground)]">Code 128 · {product.productCode}</p>
-        </div>
-        <Button variant="ghost" onClick={onClose}>Close</Button>
-      </div>
-      <div className="grid gap-6 p-5 lg:grid-cols-[minmax(280px,.8fr)_1fr] lg:items-center">
-        <div className="barcode-label-preview mx-auto w-full max-w-sm border border-dashed border-[var(--border)] bg-white p-4 text-center">
-          <p className="truncate text-sm font-bold">{product.name}</p>
-          <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">{product.productCode}</p>
-          <div className="mt-2 flex justify-center overflow-hidden"><BarcodeSvg product={product} /></div>
-        </div>
-        <div className="grid gap-4">
-          <fieldset>
-            <legend className="field-label">Print layout</legend>
-            <div className="grid grid-cols-2 gap-2">
-              {([['single', 'Individual labels'], ['sheet', 'A4 label sheet']] as const).map(([value, label]) => (
-                <label key={value} className={`flex min-h-12 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm font-semibold ${format === value ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]" : "border-[var(--border)] bg-white"}`}>
-                  <input className="accent-[var(--accent)]" type="radio" name="label-format" value={value} checked={format === value} onChange={() => { setFormat(value); setCopies(value === "sheet" ? 24 : 1); }} />
-                  {label}
-                </label>
-              ))}
+    <>
+      <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+        <DialogContent className="no-print grid-rows-[auto_minmax(0,1fr)] max-h-[90vh] max-w-3xl gap-0 overflow-hidden p-0">
+          <DialogHeader className="border-b border-[var(--border)] px-5 py-5 sm:px-6">
+            <DialogTitle>{product.name}</DialogTitle>
+            <DialogDescription>Code 128 · {product.productCode}</DialogDescription>
+          </DialogHeader>
+          <div className="grid min-h-0 gap-6 overflow-y-auto px-5 py-5 sm:px-6 lg:grid-cols-[minmax(280px,.8fr)_1fr] lg:items-center">
+            <div className="barcode-label-preview mx-auto w-full max-w-sm border border-dashed border-[var(--border)] bg-white p-4 text-center">
+              <p className="truncate text-sm font-bold">{product.name}</p>
+              <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">{product.productCode}</p>
+              <div className="mt-2 flex justify-center overflow-hidden"><BarcodeSvg product={product} /></div>
             </div>
-          </fieldset>
-          <div><label className="field-label" htmlFor="label-copies">Number of labels</label><Input id="label-copies" type="number" min="1" max={format === "single" ? 10 : 30} value={copies} onChange={(event) => setCopies(Number(event.target.value))} /></div>
-        <div className="flex flex-col gap-2 sm:flex-row"><Button className="flex-1" onClick={print}><Printer size={17} />Print {count} {count === 1 ? "label" : "labels"}</Button>{onReceive && <Button className="flex-1" variant="secondary" onClick={onReceive}>Receive opening stock</Button>}</div>
-        </div>
-      </div>
+            <div className="grid gap-4">
+              <fieldset>
+                <legend className="field-label">Print layout</legend>
+                <div className="grid grid-cols-2 gap-2">
+                  {([['single', 'Individual labels'], ['sheet', 'A4 label sheet']] as const).map(([value, label]) => (
+                    <label key={value} className={`flex min-h-12 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm font-semibold ${format === value ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]" : "border-[var(--border)] bg-white"}`}>
+                      <input className="accent-[var(--accent)]" type="radio" name="label-format" value={value} checked={format === value} onChange={() => { setFormat(value); setCopies(value === "sheet" ? 24 : 1); }} />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <div><label className="field-label" htmlFor="label-copies">Number of labels</label><Input id="label-copies" type="number" min="1" max={format === "single" ? 10 : 30} value={copies} onChange={(event) => setCopies(Number(event.target.value))} /></div>
+              <div className="flex flex-col gap-2 sm:flex-row"><Button className="flex-1" onClick={print}><Printer size={17} />Print {count} {count === 1 ? "label" : "labels"}</Button>{onReceive && <Button className="flex-1" variant="secondary" onClick={onReceive}>Receive opening stock</Button>}</div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       <div className={`barcode-print-sheet barcode-layout-${format}`} aria-hidden="true">
         {Array.from({ length: count }, (_, index) => (
           <div className="barcode-print-label" key={index}>
@@ -99,6 +101,6 @@ export function BarcodePrintPanel({ product, onClose, onReceive }: { product: La
           </div>
         ))}
       </div>
-    </section>
+    </>
   );
 }
