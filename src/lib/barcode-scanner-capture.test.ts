@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  advanceFieldScannerCapture,
   advanceScannerCapture,
   EMPTY_SCANNER_CAPTURE,
   type ScannerCaptureState,
@@ -13,6 +14,23 @@ function enterKeys(keys: string[], editable = false, gap = 20) {
 
   for (const key of keys) {
     const result = advanceScannerCapture(state, { key, occurredAt: at, targetIsEditable: editable });
+    state = result.state;
+    barcode = result.barcode ?? barcode;
+    preventDefault = result.preventDefault;
+    at += gap;
+  }
+
+  return { state, barcode, preventDefault };
+}
+
+function enterFieldKeys(keys: string[], gap = 20) {
+  let state: ScannerCaptureState = EMPTY_SCANNER_CAPTURE;
+  let at = 1000;
+  let barcode: string | undefined;
+  let preventDefault = false;
+
+  for (const key of keys) {
+    const result = advanceFieldScannerCapture(state, { key, occurredAt: at });
     state = result.state;
     barcode = result.barcode ?? barcode;
     preventDefault = result.preventDefault;
@@ -63,5 +81,38 @@ describe("barcode scanner capture", () => {
     const result = enterKeys(["F9", "4", "8", "Escape"], true);
     expect(result.barcode).toBeUndefined();
     expect(result.state).toEqual(EMPTY_SCANNER_CAPTURE);
+  });
+});
+
+describe("barcode field capture", () => {
+  it("captures a rapid Enter-terminated scan inside the barcode field", () => {
+    const result = enterFieldKeys([..."4800194185080", "Enter"]);
+    expect(result).toMatchObject({ barcode: "4800194185080", preventDefault: true });
+  });
+
+  it("lets ordinary typed characters reach the field", () => {
+    const result = enterFieldKeys([..."4800", "1950", "80"]);
+    expect(result.barcode).toBeUndefined();
+    expect(result.preventDefault).toBe(false);
+  });
+
+  it("blocks Enter in the field so it cannot submit the product form", () => {
+    const result = enterFieldKeys(["Enter"]);
+    expect(result).toMatchObject({ barcode: undefined, preventDefault: true });
+  });
+
+  it("does not emit when the admin types slowly and presses Enter", () => {
+    const result = enterFieldKeys([..."4800194185080", "Enter"], 150);
+    expect(result.barcode).toBeUndefined();
+  });
+
+  it("captures an F9-prefixed scan inside the field", () => {
+    const result = enterFieldKeys(["F9", ..."INV-000123", "Enter"]);
+    expect(result).toMatchObject({ barcode: "INV-000123", preventDefault: true });
+  });
+
+  it("does not capture a burst shorter than the minimum barcode length", () => {
+    const result = enterFieldKeys([..."480", "Enter"]);
+    expect(result.barcode).toBeUndefined();
   });
 });

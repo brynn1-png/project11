@@ -118,3 +118,10 @@ export function advanceScannerCapture(state: ScannerCaptureState, event: Scanner
 
   return { state: EMPTY_SCANNER_CAPTURE, preventDefault: false };
 }
+
+export function advanceFieldScannerCapture(state: ScannerCaptureState, event: Omit<ScannerKey, "targetIsEditable">): ScannerCaptureResult {
+  const result = advanceScannerCapture(state, { ...event, targetIsEditable: false });
+  const heldByPrefix = state.mode === "prefixed" || result.state.mode === "prefixed";
+  const swallow = heldByPrefix || event.key === "Enter" || result.barcode !== undefined;
+  return { ...result, preventDefault: swallow };
+}

@@ -1,10 +1,23 @@
 # Decision Log
 
-## Current State Summary (Updated: 2026-09-21)
-- **Active Decision:** Summarize dashboard activity by its parent receipt while preserving item-level audit history
+## Current State Summary (Updated: 2026-09-30)
+- **Active Decision:** Capture scans on the product form through two routes and never hijack keystrokes from other fields
 - **Status:** 🟢 Confirmed
-- **Latest Decision:** Add stable receipt group identifiers to the activity read model instead of inferring receipts from timestamps
-- **Open Questions:** Future adjustment approval and hosting
+- **Latest Decision:** Reject Enter-burst hijacking from other inputs; keep F9 as the forced route
+- **Open Questions:** Live scanner acceptance; two pre-existing lint errors in `inventory-app.tsx`
+
+---
+
+## 2026-09-30 — Task #032: Barcode Scanning on Product Registration
+**Decision:** Let the product form fill its Barcode field from two capture routes, gated on the "Enter barcode" option being selected.
+**Why:** The admin had to click the Barcode field before every scan, which is slower than typing. Capture is only meaningful when the product already carries a manufacturer barcode, so "Generate INV code" mode deliberately ignores scans.
+**Route 1:** Mount the existing global hook while the form is open. This covers a scan when no field has focus, and gives F9-prefix support from any field.
+**Route 2:** Add `advanceFieldScannerCapture` for the Barcode input itself, so scanning works while that field holds focus and keeps it there.
+**Rejected — routing Enter-terminated bursts to the barcode field from other inputs.** It would let the admin skip F9 entirely, but a description written at speed and ended with Enter within 80ms would be silently replaced by the barcode, and paste-then-Enter can fall in the same window. Restricting it to number and date fields was also rejected: it would behave inconsistently depending on which field the admin stopped in, which is worse than one documented rule.
+**Focus after capture:** Keep focus in the Barcode field with its contents selected, so the next scan replaces the previous code and the admin clicks once per form rather than once per scan. Auto-advancing to Selling price was rejected because the product name is usually typed first.
+**Duplicate handling:** Warn client-side against the loaded product list but never block, because the list can be cached and the server also rejects barcodes reserved as inactive aliases. The product being edited is excluded from its own check.
+**Transport characters:** Sanitize captured values with the same AIM/GS1 stripping already used for barcode matching. Without it, a GS1-128 scan carrying a `]C…` prefix or a `\x1D` separator fails the printable-ASCII rule on save.
+**Scope:** Hardware scanner only. The camera scanner stays on the Sales screen.
 
 ---
 

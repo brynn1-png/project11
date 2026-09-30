@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Archive, ArrowCounterClockwise, Barcode, MagnifyingGlass, Package, PencilSimple, Plus, Printer, Trash, Warning } from "@phosphor-icons/react";
 import {
@@ -27,6 +27,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Textarea } from "@/components/ui/textarea";
+import { useBarcodeScannerCapture } from "@/hooks/use-barcode-scanner-capture";
+import { advanceFieldScannerCapture, EMPTY_SCANNER_CAPTURE, type ScannerCaptureState } from "@/lib/barcode-scanner-capture";
+import { barcodeValuesMatch, sanitizeScannedBarcode } from "@/lib/barcode-values";
 import { getStockStatus, type Product } from "@/lib/types";
 import { formatQuantity, pluralizeUnit } from "@/lib/units";
 import { paginateItems } from "@/lib/pagination";
@@ -76,6 +79,9 @@ export function ProductManagementView({ startCreating, canManage, canArchive, ca
   const [archiveReason, setArchiveReason] = useState("");
   const [addInitialStock, setAddInitialStock] = useState(false);
   const [initialStock, setInitialStock] = useState({ quantity: "", unitCost: "", expiresAt: "" });
+  const [barcodeScan, setBarcodeScan] = useState<{ barcode: string; duplicateOf: string | null } | null>(null);
+  const barcodeFieldRef = useRef<HTMLInputElement>(null);
+  const barcodeScanStateRef = useRef<ScannerCaptureState>(EMPTY_SCANNER_CAPTURE);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -108,7 +114,7 @@ export function ProductManagementView({ startCreating, canManage, canArchive, ca
   const archivedPage = useMemo(() => paginateItems(shownArchived, page, pageSize), [page, pageSize, shownArchived]);
 
   function beginCreate() {
-    setEditing("new"); setForm({ ...emptyForm, categoryId: categories[0]?.id ?? "" }); setFormError(""); setConfirmArchive(false); setConfirmArchiveStockRemoval(false); setArchiveReason(""); setAddInitialStock(false); setInitialStock({ quantity: "", unitCost: "", expiresAt: "" });
+    setEditing("new"); setForm({ ...emptyForm, categoryId: categories[0]?.id ?? "" }); setFormError(""); setConfirmArchive(false); setConfirmArchiveStockRemoval(false); setArchiveReason(""); setAddInitialStock(false); setInitialStock({ quantity: "", unitCost: "", expiresAt: "" }); resetBarcodeScan();
   }
   function loadArchivedProducts() {
     setArchivedLoading(true); setArchivedError("");
@@ -119,13 +125,44 @@ export function ProductManagementView({ startCreating, canManage, canArchive, ca
     });
   }
   function openArchivedProducts() { setCatalogMode("archived"); setPage(1); loadArchivedProducts(); }
-  function beginEdit(product: Product) { setEditing(product); setForm(formFromProduct(product)); setFormError(""); setConfirmArchive(false); setConfirmArchiveStockRemoval(false); setArchiveReason(""); setAddInitialStock(false); setInitialStock({ quantity: "", unitCost: "", expiresAt: "" }); }
+  function beginEdit(product: Product) { setEditing(product); setForm(formFromProduct(product)); setFormError(""); setConfirmArchive(false); setConfirmArchiveStockRemoval(false); setArchiveReason(""); setAddInitialStock(false); setInitialStock({ quantity: "", unitCost: "", expiresAt: "" }); resetBarcodeScan(); }
   function set<K extends keyof ProductForm>(key: K, value: ProductForm[K]) { setForm((current) => ({ ...current, [key]: value })); }
 
   function setExpiryTracking(value: ProductForm["expiryTracking"]) {
     set("expiryTracking", value);
     if (value === "not_applicable") setInitialStock((current) => ({ ...current, expiresAt: "" }));
   }
+
+  function focusBarcodeField(select = false) {
+    window.setTimeout(() => {
+      if (!barcodeFieldRef.current) return;
+      barcodeFieldRef.current.focus();
+      if (select) barcodeFieldRef.current.select();
+    }, 0);
+  }
+
+  function resetBarcodeScan() {
+    setBarcodeScan(null);
+    barcodeScanStateRef.current = EMPTY_SCANNER_CAPTURE;
+  }
+
+  function captureBarcode(value: string) {
+    const clean = sanitizeScannedBarcode(value);
+    if (!clean) return;
+    const editingId = editing && editing !== "new" ? editing.databaseId : null;
+    const duplicate = products.find((product) => product.databaseId !== editingId && barcodeValuesMatch(product.barcode, clean));
+    set("barcode", clean);
+    setBarcodeScan({ barcode: clean, duplicateOf: duplicate?.name ?? null });
+    focusBarcodeField(true);
+  }
+
+  function chooseBarcodeMode(value: ProductForm["barcodeMode"]) {
+    set("barcodeMode", value);
+    resetBarcodeScan();
+    if (value === "manufacturer") focusBarcodeField();
+  }
+
+  useBarcodeScannerCapture(captureBarcode, Boolean(editing) && form.barcodeMode === "manufacturer");
 
   function selectManagedCategory(id: string) {
     const selected = categories.find((item) => item.id === id);
@@ -254,8 +291,8 @@ export function ProductManagementView({ startCreating, canManage, canArchive, ca
               {form.expiryTracking === "required" && <div className="sm:col-span-2"><label className="field-label" htmlFor="initial-expiry">Expiry date</label><Input id="initial-expiry" type="date" min={new Date().toISOString().slice(0, 10)} value={initialStock.expiresAt} onChange={(event) => setInitialStock((current) => ({ ...current, expiresAt: event.target.value }))} required /></div>}
             </div>}
           </div>}
-          <fieldset><legend className="field-label">Barcode source</legend><div className="grid grid-cols-2 gap-2">{([['manufacturer', 'Enter barcode'], ['generated', 'Generate INV code']] as const).map(([value, label]) => <label key={value} className={`flex min-h-12 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm font-semibold ${form.barcodeMode === value ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]" : "border-[var(--border)] bg-white"}`}><input type="radio" name="barcode-mode" className="accent-[var(--accent)]" checked={form.barcodeMode === value} onChange={() => set("barcodeMode", value)} />{label}</label>)}</div></fieldset>
-          {form.barcodeMode === "manufacturer" ? <div><label className="field-label" htmlFor="product-barcode">Barcode</label><div className="relative"><Barcode className="absolute left-3.5 top-3.5 text-[var(--muted-foreground)]" size={18} /><Input id="product-barcode" className="pl-10 font-mono" value={form.barcode} onChange={(event) => set("barcode", event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); event.stopPropagation(); } }} aria-describedby={isNew ? undefined : "product-barcode-help"} required minLength={4} maxLength={64} /></div>{!isNew && <p id="product-barcode-help" className="mt-1.5 text-xs text-[var(--muted-foreground)]">The old barcode remains reserved as an inactive alias after you save.</p>}</div> : <BarcodeGenerationPreview productName={form.name} />}
+          <fieldset><legend className="field-label">Barcode source</legend><div className="grid grid-cols-2 gap-2">{([['manufacturer', 'Enter barcode'], ['generated', 'Generate INV code']] as const).map(([value, label]) => <label key={value} className={`flex min-h-12 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm font-semibold ${form.barcodeMode === value ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]" : "border-[var(--border)] bg-white"}`}><input type="radio" name="barcode-mode" className="accent-[var(--accent)]" checked={form.barcodeMode === value} onChange={() => chooseBarcodeMode(value)} />{label}</label>)}</div></fieldset>
+          {form.barcodeMode === "manufacturer" ? <div><label className="field-label" htmlFor="product-barcode">Barcode</label><div className="relative"><Barcode className="absolute left-3.5 top-3.5 text-[var(--muted-foreground)]" size={18} /><Input ref={barcodeFieldRef} id="product-barcode" className="pl-10 font-mono" value={form.barcode} onChange={(event) => { set("barcode", event.target.value); setBarcodeScan(null); }} onFocus={(event) => event.currentTarget.select()} onKeyDown={(event) => { const result = advanceFieldScannerCapture(barcodeScanStateRef.current, { key: event.key, occurredAt: event.timeStamp, altKey: event.altKey, ctrlKey: event.ctrlKey, metaKey: event.metaKey }); barcodeScanStateRef.current = result.state; if (result.preventDefault) { event.preventDefault(); event.stopPropagation(); } if (result.barcode) captureBarcode(result.barcode); }} aria-describedby={isNew ? "product-barcode-hint" : "product-barcode-hint product-barcode-help"} required minLength={4} maxLength={64} /></div><p id="product-barcode-hint" className="mt-1.5 text-xs text-[var(--muted-foreground)]">Scanner ready. Scan here or anywhere on this form; press F9 first when another field has focus.</p>{barcodeScan && <p role="status" aria-live="polite" className={`mt-1.5 text-xs font-semibold ${barcodeScan.duplicateOf ? "text-amber-700" : "text-[var(--accent-strong)]"}`}>Scanned {barcodeScan.barcode}{barcodeScan.duplicateOf ? ` — already used by ${barcodeScan.duplicateOf}, so saving may be rejected.` : "."}</p>}{!isNew && <p id="product-barcode-help" className="mt-1.5 text-xs text-[var(--muted-foreground)]">The old barcode remains reserved as an inactive alias after you save.</p>}</div> : <BarcodeGenerationPreview productName={form.name} />}
           {formError && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">{formError}</div>}
         </fieldset>
       </div>

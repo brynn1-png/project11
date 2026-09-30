@@ -1,11 +1,27 @@
 # Progress Log
 
-## Current State Summary (Updated: 2026-09-21)
-- **Active Task:** Task #031 — Receipt-level recent activity
+## Current State Summary (Updated: 2026-09-30)
+- **Active Task:** Task #032 — Barcode scanning on Register a product
 - **Status:** 🟢 Implemented and locally verified
-- **Next Action:** Apply the latest receipt-grouping migration and confirm the dashboard against live receipts
-- **Blockers:** Hosted database migration and live browser acceptance remain external
-- **Last Completed:** Task #031 Receipt-level recent activity on 2026-09-21
+- **Next Action:** Verify scanning with a physical scanner in the browser
+- **Blockers:** Live hardware verification remains external; two pre-existing lint errors in `inventory-app.tsx` are unrelated to this work
+- **Last Completed:** Task #032 Barcode scanning on product registration on 2026-09-30
+
+---
+
+## 2026-09-30 — Task #032: Barcode Scanning on Register a Product
+**Status:** 🟢 Done
+**Summary:** Made the Register/Edit a product form capture hardware barcode scans and write them into the Barcode field, so the admin no longer has to click the field before every scan.
+**Steps completed:**
+- [x] Confirm the problem in the current code (no capture layer existed on the product form)
+- [x] Present the plan with stakes and effects, and get approval
+- [x] Add `stripTransportCharacters` and `sanitizeScannedBarcode` to `src/lib/barcode-values.ts`
+- [x] Add `advanceFieldScannerCapture` for capture inside an editable barcode field
+- [x] Mount `useBarcodeScannerCapture` while the form is open in "Enter barcode" mode
+- [x] Add field-level capture, focus/select handling, status line, and duplicate warning to the form
+- [x] Add unit tests for the new capture function and the sanitizer
+- [x] Run tests, typecheck, lint on changed files, and the production build
+**Notes:** Scanning only applies when the "Enter barcode" option is selected. Focus stays in the Barcode field after a capture so repeat scans need no clicking. F9 forces a scan in from any other field. Hardware scanner only; the camera scanner stays on the Sales screen.
 
 ---
 

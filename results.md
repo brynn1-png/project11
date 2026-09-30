@@ -1,10 +1,25 @@
 # Results Log
 
-## Current State Summary (Updated: 2026-09-21)
-- **Active Task:** Task #031 — Receipt-level recent activity
+## Current State Summary (Updated: 2026-09-30)
+- **Active Task:** Task #032 — Barcode scanning on Register a product
 - **Status:** 🟢 Implemented and locally verified
-- **Latest Result:** Dashboard activity now presents one row per sale or receiving receipt
-- **Verification:** ESLint, 64 tests, production build, diff validation, and Impeccable interface detector passed
+- **Latest Result:** The product form now fills its Barcode field from a scan, with no mouse needed per scan
+- **Verification:** 89 tests passed across 15 files, typecheck passed, changed files lint clean, production build passed
+
+---
+
+## 2026-09-30 — Task #032: Barcode Scanning on Product Registration Result
+**Outcome:** Register and Edit a product now capture hardware barcode scans and write the value straight into the Barcode field when the "Enter barcode" option is selected.
+**Capture result:** Three confirmed routes all land in the Barcode field — a scan with no field focused, a scan while the Barcode field holds focus, and an F9-prefixed scan from any other field.
+**Focus result:** Focus stays in the Barcode field with its contents selected after each capture, so consecutive scans need no clicking.
+**Feedback result:** A status line confirms the captured code. If the code is already used by another product, the line turns amber and names that product.
+**Mode result:** With "Generate INV code" selected, the capture hook is disabled and the Barcode field is not rendered, so a scan changes nothing.
+**Validation result:** Captured values are stripped of AIM symbology identifiers, GS1 group separators, and control characters before being stored, so logistics-style scans no longer fail the printable-ASCII rule on save.
+**Safety result:** Enter inside the Barcode field still cannot submit the form, and switching barcode mode or reopening the form clears any previous capture state.
+**Verification results:** 89 tests passed across 15 files (6 new for field capture, 9 new for barcode sanitizing and matching), typecheck passed with no errors, ESLint reported no problems in any changed file, and the production build compiled successfully.
+**Known limitation:** A hardware scanner types ordinary keystrokes, so scanning while a *different* text field has focus enters the code into that field. F9 is the documented escape hatch. Not fixable without risking typed text.
+**Flagged, unrelated:** `npm run lint` reports 2 pre-existing errors in `src/components/inventory-app.tsx` (a `setState` inside an effect at line 137, and an unescaped apostrophe at line 341). That file is unmodified in the working tree, so these predate this task and were not introduced by it.
+**Pending verification:** Confirm with a physical scanner in the browser that scans land in the Barcode field.
 
 ---
 
