@@ -1,10 +1,23 @@
 # Results Log
 
-## Current State Summary (Updated: 2026-09-30)
-- **Active Task:** Task #035 — Product print panel converted to a modal
-- **Status:** 🟢 Done (static verification only; no browser screenshot available)
-- **Latest Result:** *Print* now opens a Radix Dialog instead of pushing an inline panel above the product table; barcode printing path preserved unchanged
-- **Verification:** 104 tests passed across 15 files, typecheck passed, lint clean, production build passed, `@media print` rules confirmed untouched; browser screenshot not captured (no desktop browser connected)
+## Current State Summary (Updated: 2026-10-01)
+- **Active Task:** Task #036 — Project PDF documentation via document-generator MCP
+- **Status:** 🟢 Done
+- **Latest Result:** `generated_documents/south-emerald-inventory-system-documentation_1790852741516.pdf` generated (22,117 bytes) and previewed
+- **Verification:** MCP server listed as `connected`; output file confirmed on disk by size and timestamp; content traced to actual repo sources (no app code touched); app build/tests not re-run because `src/` was unchanged
+- **Environment changed:** new file `opencode.json` added at repo root
+
+---
+
+## 2026-10-01 — Task #036: Project PDF Documentation Result
+**Outcome:** A single PDF covering overview, stack, architecture, all views, the role/permission matrix, database tables and RPCs, the Server Action API surface, security and rate limits, setup/first-admin/scripts, design system, testing, and a documentation index.
+**Tooling result:** `document-generator` MCP (local stdio, `npx document-generator-mcp@latest`) exposed `gerar_documento_pdf`, which wrote the file to `generated_documents/`.
+**Verification results:**
+- [x] `opencode mcp list` → `document-generator connected`
+- [x] Output file exists, 22,117 bytes, written 2026-10-01 19:05
+- [x] PDF opened in the Review pane for the user
+- [x] No changes to `src/`, `supabase/`, or `package.json` — app test suite not affected
+**Notes / risks:** Filename is timestamped, so each regeneration adds a file rather than replacing. PDF formatting (margins, code-block colors) is produced by the MCP server and was not page-by-page inspected.
 
 ---
 

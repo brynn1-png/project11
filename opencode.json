@@ -1,0 +1,17 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "document-generator": {
+        "type": "local",
+        "command": [
+          "npx",
+          "-y",
+          "--cache",
+          "C:\\Users\\bryan\\AppData\\Local\\Temp\\opencode\\npx-cache",
+          "document-generator-mcp@latest"
+        ]
+      }
+    }
+  }
+}

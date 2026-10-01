@@ -1,13 +1,27 @@
 # Progress Log
 
-## Current State Summary (Updated: 2026-09-30)
-- **Active Task:** Task #035 — Product print panel converted to a modal
-- **Status:** 🟢 Done (static verification only; no browser screenshot available)
-- **Next Action:** None pending. Optional follow-up: print-layout radios hardcode `bg-white`, wrong in dark mode (pre-existing, out of scope).
-- **Blockers:** None. Visual acceptance still uncaptured — desktop browser not connected.
-- **Last Completed:** Task #035 Print panel as modal on 2026-09-30
+## Current State Summary (Updated: 2026-10-01)
+- **Active Task:** Task #036 — Project PDF documentation via document-generator MCP
+- **Status:** 🟢 Done
+- **Next Action:** None pending. Optional: Word version via `gerar_documento_word`, or regenerate the PDF after major docs changes.
+- **Blockers:** None. Prior open item remains: live browser acceptance screenshots still uncaptured.
+- **Last Completed:** Task #036 PDF documentation on 2026-10-01
 
 ---
+
+## 2026-10-01 — Task #036: Project PDF Documentation via MCP
+**Status:** 🟢 Done
+**Summary:** Added the `document-generator-mcp` server to a new project-level `opencode.json` and generated a full-project PDF from repo sources.
+**Steps completed:**
+- [x] Read `https://opencode.ai/v2/docs/mcp-servers/` and the server's mcpservers.org page
+- [x] Create `opencode.json` with the local stdio server entry (npx, temp-dir cache — the docs' `/tmp` path is Unix-only)
+- [x] Confirm connection (`opencode mcp list` → `document-generator connected`) and tool availability
+- [x] Gather source content: `PRODUCT.md`, `docs/page-guide.md`, `docs/endpoint-security.md`, `docs/supabase-setup.md`, `design-system/.../MASTER.md`, `.env.example`, `src/lib/auth/permissions.ts`, migrations, server actions
+- [x] Call `gerar_documento_pdf` and verify output exists (22,117 bytes)
+- [x] Preview the PDF for the user
+**Notes:** Output is `generated_documents/south-emerald-inventory-system-documentation_1790852741516.pdf` (timestamped name — regeneration creates a new file).
+---
+
 
 ## 2026-09-30 — Task #035: Product Print Panel as Modal
 **Status:** 🟢 Done

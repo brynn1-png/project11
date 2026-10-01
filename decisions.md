@@ -1,10 +1,23 @@
 # Decision Log
 
-## Current State Summary (Updated: 2026-09-30)
-- **Active Decision:** Render the barcode print sheet outside the Radix Dialog rather than inside it, so print layout is preserved
+## Current State Summary (Updated: 2026-10-01)
+- **Active Decision:** Configure `document-generator-mcp` in a project-level `opencode.json` (not global) for PDF generation
 - **Status:** 🟢 Confirmed
-- **Latest Decision:** Follow the shipped `ReceiptModal` precedent for printing from inside a modal instead of inventing a new print path
-- **Open Questions:** Task #033: forced password change at first sign-in; live browser acceptance of the guards. Live print acceptance for the new barcode modal still uncaptured.
+- **Latest Decision:** Build the PDF content from repo sources (`PRODUCT.md`, `docs/*`, migrations, actions) rather than a free-form summary
+- **Open Questions:** Task #033: forced password change at first sign-in; live browser acceptance. Prior open item: live print acceptance for the barcode modal.
+
+---
+
+## 2026-10-01 — Task #036: PDF Documentation via MCP
+**Decision:** Add the server as `mcp.servers.document-generator` in a new project-level `opencode.json`, per the v2 docs (server names nest under `servers`, not directly under `mcp`).
+**Why:** User chose project scope over `--global`; it keeps the config in the repo, scoped to project11, and reviewable in git.
+**Risk flagged:** MCP servers connect at startup, so the tool was expected to be unavailable until the config was reloaded — it connected without a restart, verified via `opencode mcp list`.
+**Decision:** Override the server's documented npx cache arg (`--cache /tmp/.npx-cache`) with a Windows temp path (`%LOCALAPPDATA%\Temp\opencode\npx-cache`).
+**Why:** `/tmp` does not exist on native Windows; using it risks an npx cache failure or the documented "use strict: not found" stale-cache error.
+**Alternatives rejected:** Global config (not what the user wanted); hand-writing a PDF (defeats the requested MCP workflow).
+**Decision:** Compose the document from first-party repo sources with a permissions matrix, schema table, server-action/RPC inventory, rate-limit table, and setup steps.
+**Why:** User selected "Full project documentation"; free-form generation would risk inventing details, and the working rules require grounding in actual code.
+**Alternatives rejected:** End-user manual, developer-only guide, setup-only guide (user picked full documentation; the other scopes remain available later).
 
 ---
 
