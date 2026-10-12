@@ -248,8 +248,8 @@ export function ReportsView({
     } else {
       const rows = report === "low-stock" ? lowStock : filteredInventory;
       downloadCsv(`${report === "low-stock" ? "low-stock" : "current-inventory"}-${today}.csv`, [
-        ["Product code", "Product", "Barcode", "Category", "Quantity", "Unit", "Minimum stock", "Unit price", "Retail value", "Status"],
-        ...rows.map((product) => [product.id, product.name, product.barcode, product.category, product.stock, product.unit, product.minimumStock, product.price, product.stock * product.price, getStockStatus(product)]),
+        ["Product code", "Product", "Barcode", "Category", "On hand", "Sellable", "Unit", "Minimum stock", "Unit price", "Retail value", "Status"],
+        ...rows.map((product) => [product.id, product.name, product.barcode, product.category, product.stock, product.sellableStock, product.unit, product.minimumStock, product.price, product.stock * product.price, getStockStatus(product)]),
       ]);
     }
     notify("Report downloaded as CSV.");
@@ -387,13 +387,13 @@ function InventoryReport({ rows, pagination }: { rows: ReturnType<typeof useInve
 }
 
 function LowStockReport({ rows, pagination }: { rows: ReturnType<typeof useInventory>["products"]; pagination: ReportPaginationProps }) {
-  const out = rows.filter((product) => product.stock === 0).length;
-  const shortfall = rows.reduce((sum, product) => sum + Math.max(product.minimumStock - product.stock, 0), 0);
+  const out = rows.filter((product) => product.sellableStock === 0).length;
+  const shortfall = rows.reduce((sum, product) => sum + Math.max(product.minimumStock - product.sellableStock, 0), 0);
   return <><SummaryStrip items={[{ label: "Products to restock", value: rows.length, tone: rows.length ? "warning" : undefined }, { label: "Out of stock", value: out, tone: out ? "danger" : undefined }, { label: "Units below minimum", value: shortfall }, { label: "Stock status", value: rows.length ? "Action needed" : "Healthy" }]} />{rows.length > 0 ? <PaginatedReportTable rows={rows} itemLabel="products" {...pagination}>{(items) => <InventoryTable rows={items} />}</PaginatedReportTable> : <ReportEmpty title="Stock levels look healthy" description="Every matching product is above its minimum stock level." icon={<Warning />} />}</>;
 }
 
 function InventoryTable({ rows }: { rows: ReturnType<typeof useInventory>["products"] }) {
-  return <table className="data-table min-w-[900px]"><thead><tr><th>Product</th><th>Barcode</th><th>Category</th><th>Current stock</th><th>Minimum</th><th>Unit price</th><th>Retail value</th><th>Status</th></tr></thead><tbody>{rows.map((product) => <tr key={product.databaseId}><td><p className="font-semibold">{product.name}</p><p className="text-xs text-[var(--muted-foreground)]">{product.id}</p></td><td className="font-mono text-xs">{product.barcode}</td><td>{product.category}</td><td className="font-semibold">{formatQuantity(product.stock, product.unit)}</td><td>{formatQuantity(product.minimumStock, product.unit)}</td><td>{peso(product.price)}</td><td className="font-semibold">{peso(product.stock * product.price)}</td><td><StatusBadge status={getStockStatus(product)} /></td></tr>)}</tbody></table>;
+  return <table className="data-table min-w-[900px]"><thead><tr><th>Product</th><th>Barcode</th><th>Category</th><th>On hand</th><th>Sellable</th><th>Minimum</th><th>Unit price</th><th>Retail value</th><th>Status</th></tr></thead><tbody>{rows.map((product) => <tr key={product.databaseId}><td><p className="font-semibold">{product.name}</p><p className="text-xs text-[var(--muted-foreground)]">{product.id}</p></td><td className="font-mono text-xs">{product.barcode}</td><td>{product.category}</td><td className="font-semibold">{formatQuantity(product.stock, product.unit)}</td><td className="font-semibold">{formatQuantity(product.sellableStock, product.unit)}</td><td>{formatQuantity(product.minimumStock, product.unit)}</td><td>{peso(product.price)}</td><td className="font-semibold">{peso(product.stock * product.price)}</td><td><StatusBadge status={getStockStatus(product)} /></td></tr>)}</tbody></table>;
 }
 
 function MovementReport({ rows, pagination }: { rows: StockMovementReportRow[]; pagination: ReportPaginationProps }) {

@@ -4,7 +4,7 @@ import type { Product, StockTransaction } from "@/lib/types";
 
 const DATABASE_NAME = "inventory-system-cache";
 const STORE_NAME = "snapshots";
-const SNAPSHOT_KEY_PREFIX = "latest-inventory";
+const SNAPSHOT_KEY_PREFIX = "latest-inventory-v2";
 
 export type CachedInventorySnapshot = {
   products: Product[];

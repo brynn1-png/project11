@@ -15,6 +15,7 @@ function product(name: string, stock: number, minimumStock: number): Product {
     unit: "item",
     expiryTracking: "not_applicable",
     stock,
+    sellableStock: stock,
     minimumStock,
     price: 10,
     updatedAt: "2026-09-19T00:00:00.000Z",
@@ -49,5 +50,10 @@ describe("stock alerts", () => {
 
   it("returns an empty list when every product is above its restock level", () => {
     expect(getStockAlerts([product("Healthy", 11, 10)])).toEqual([]);
+  });
+
+  it("flags stock as unavailable when only expired units remain", () => {
+    const expired = { ...product("Expired", 8, 5), sellableStock: 0 };
+    expect(getStockAlerts([expired])[0]?.status).toBe("Out of Stock");
   });
 });

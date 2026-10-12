@@ -11,7 +11,7 @@ export function getStockAlerts(products: Product[]): StockAlert[] {
     .filter((alert): alert is StockAlert => alert.status !== "In Stock")
     .sort((left, right) => {
       if (left.status !== right.status) return left.status === "Out of Stock" ? -1 : 1;
-      if (left.product.stock !== right.product.stock) return left.product.stock - right.product.stock;
+      if (left.product.sellableStock !== right.product.sellableStock) return left.product.sellableStock - right.product.sellableStock;
       return left.product.name.localeCompare(right.product.name);
     });
 }

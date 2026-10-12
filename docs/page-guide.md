@@ -21,7 +21,7 @@ This document describes the user-facing pages and the main paths between them in
 
 **Purpose:** Search and manage the active product catalog, categories, barcode labels, and archived products. Product creation and editing controls depend on permissions.
 
-**Flow:** Search/filter the catalog, then create or edit a product, manage categories, print a barcode, or switch to archived products to restore them. Managers may archive products; permanent deletion is restricted further to administrators. From a product, **Receive stock** opens Receive Stock with that product selected. Product registration can optionally include opening stock, then continue to a stock receipt.
+**Flow:** Search/filter the catalog, then create or edit a product, manage categories, print a barcode, or switch to archived products to restore them. The catalog shows the earliest active batch expiry and separates on-hand from sellable stock. Managers can view active batches and correct their expiry dates together from the product editor. Managers may archive products; permanent deletion is restricted further to administrators. From a product, **Receive stock** opens Receive Stock with that product selected. Product registration can optionally include opening stock, then continue to a stock receipt.
 
 ### Sales
 
@@ -39,7 +39,7 @@ This document describes the user-facing pages and the main paths between them in
 
 **Purpose:** Record incoming inventory and its batch details.
 
-**Flow:** Search for or scan a product (or arrive from an alert/product shortcut), enter quantity and unit cost, and provide relevant batch, manufacture/expiry, delivery reference, and notes. Submit the receipt to update stock and create a traceable receiving record. If the product does not exist, users with product-management permission can jump to Products to register it. Receiving requires a live database connection.
+**Flow:** Search for or scan a product (or arrive from an alert/product shortcut), enter quantity and unit cost, and provide relevant batch, manufacture/expiry, delivery reference, and notes. For expiry-tracked products, each new delivery also sets the new expiry on every older batch with stock remaining; previous dates are recorded in the audit log. A delivery with an expiry earlier than an active batch's current expiry is rejected. Submit the receipt to update stock and create a traceable receiving record. If the product does not exist, users with product-management permission can jump to Products to register it. Receiving requires a live database connection.
 
 ### Stock Levels
 

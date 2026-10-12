@@ -13,6 +13,8 @@ export type Product = {
   unit: string;
   expiryTracking: "required" | "not_applicable";
   stock: number;
+  sellableStock: number;
+  nextExpiry?: string;
   minimumStock: number;
   price: number;
   updatedAt: string;
@@ -43,7 +45,7 @@ export type UserProfile = {
 };
 
 export function getStockStatus(product: Product): StockStatus {
-  if (product.stock === 0) return "Out of Stock";
-  if (product.stock <= product.minimumStock) return "Low Stock";
+  if (!(product.sellableStock > 0)) return "Out of Stock";
+  if (product.sellableStock <= product.minimumStock) return "Low Stock";
   return "In Stock";
 }

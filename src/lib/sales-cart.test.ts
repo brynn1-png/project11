@@ -14,12 +14,13 @@ const milk: Product = {
   unit: "bottle",
   expiryTracking: "required",
   stock: 2,
+  sellableStock: 2,
   minimumStock: 1,
   price: 75,
   updatedAt: "2026-09-19T00:00:00.000Z",
 };
 
-const soap: Product = { ...milk, id: "PRD-000002", databaseId: "20000000-0000-4000-8000-000000000002", name: "Test Soap", barcode: "4800000000002", stock: 0 };
+const soap: Product = { ...milk, id: "PRD-000002", databaseId: "20000000-0000-4000-8000-000000000002", name: "Test Soap", barcode: "4800000000002", stock: 0, sellableStock: 0 };
 
 describe("sales cart", () => {
   it("returns product details for a price check without changing the cart", () => {
@@ -71,7 +72,7 @@ describe("sales cart", () => {
   });
 
   it("keeps different scanned products on separate lines", () => {
-    const inStockSoap = { ...soap, stock: 3 };
+    const inStockSoap = { ...soap, stock: 3, sellableStock: 3 };
     const result = addProductToCart([{ product: milk, quantity: 1 }], inStockSoap);
     expect(result.ok && result.cart).toHaveLength(2);
   });
@@ -81,13 +82,24 @@ describe("sales cart", () => {
     expect(addProductToCart([{ product: milk, quantity: 2 }], milk).ok).toBe(false);
   });
 
+  it("does not add expired-only stock to a sale", () => {
+    const expiredMilk = { ...milk, stock: 5, sellableStock: 0 };
+    expect(addProductToCart([], expiredMilk).ok).toBe(false);
+  });
+
+  it("limits a cart to sellable units even when physical stock is higher", () => {
+    const mixedMilk = { ...milk, stock: 5, sellableStock: 1 };
+    expect(addProductToCart([{ product: mixedMilk, quantity: 1 }], mixedMilk).ok).toBe(false);
+    expect(updateCartQuantity([{ product: mixedMilk, quantity: 1 }], mixedMilk.databaseId, 2).ok).toBe(false);
+  });
+
   it("rejects manual quantities above stock", () => {
     const cart: CartLine[] = [{ product: milk, quantity: 1 }];
     expect(updateCartQuantity(cart, milk.databaseId, 3).ok).toBe(false);
   });
 
   it("sets a large cashier-entered quantity in one update", () => {
-    const bulkMilk = { ...milk, stock: 40 };
+    const bulkMilk = { ...milk, stock: 40, sellableStock: 40 };
     const result = updateCartQuantity([{ product: bulkMilk, quantity: 1 }], bulkMilk.databaseId, 20);
 
     expect(result).toMatchObject({ ok: true, quantity: 20, cart: [{ quantity: 20 }] });

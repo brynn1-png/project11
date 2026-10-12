@@ -315,7 +315,7 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
                   <form className="flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--muted)] p-3 sm:flex-row sm:items-end" onSubmit={applyQuantityShortcut} aria-label={`Set quantity for ${quantityShortcutLine.product.name}`}>
                     <div className="min-w-0 flex-1 self-center">
                       <p className="text-sm font-semibold">Set quantity for {quantityShortcutLine.product.name}</p>
-                      <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{formatQuantity(quantityShortcutLine.product.stock, quantityShortcutLine.product.unit)} available</p>
+                      <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{formatQuantity(quantityShortcutLine.product.sellableStock, quantityShortcutLine.product.unit)} sellable</p>
                     </div>
                     <Field className="sm:w-28">
                       <FieldLabel htmlFor="quantity-shortcut">Quantity</FieldLabel>
@@ -325,7 +325,7 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
                         type="number"
                         inputMode="numeric"
                         min="1"
-                        max={quantityShortcutLine.product.stock}
+                        max={quantityShortcutLine.product.sellableStock}
                         step="1"
                         value={quantityDraft}
                         onChange={(event) => setQuantityDraft(event.target.value)}
@@ -370,7 +370,7 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
                       <h3 className="text-lg font-bold">{priceProduct.name}</h3>
                       {priceProduct.description && <p className="mt-1 text-sm text-[var(--muted-foreground)]">{priceProduct.description}</p>}
                     </div>
-                    <Badge variant={priceProduct.stock > 0 ? "default" : "destructive"} className="self-start">{priceProduct.stock > 0 ? "Available" : "Out of stock"}</Badge>
+                    <Badge variant={priceProduct.sellableStock > 0 ? "default" : "destructive"} className="self-start">{priceProduct.sellableStock > 0 ? "Available" : "No sellable stock"}</Badge>
                   </div>
                   <div className="mt-6 flex flex-col gap-1">
                     <span className="text-sm font-medium text-[var(--muted-foreground)]">Selling price</span>
@@ -396,8 +396,8 @@ export function SalesView({ notify }: { notify: (message: string) => void }) {
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{line.product.name}</p><p className="mt-1 text-xs text-[var(--muted-foreground)]">{peso(line.product.price * line.quantity)}</p></div>
               <div className="flex items-center gap-1">
                 <Button type="button" variant="ghost" size="icon" onClick={() => changeQuantity(line.product.databaseId, line.quantity - 1)} aria-label={`Decrease ${line.product.name} quantity`}><Minus /></Button>
-                <Input className="w-16 text-center" type="number" min="1" max={line.product.stock} value={line.quantity} onChange={(event) => changeQuantity(line.product.databaseId, Number(event.target.value))} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); restoreScanFocus(); } }} aria-label={`${line.product.name} quantity`} />
-                <Button type="button" variant="ghost" size="icon" onClick={() => changeQuantity(line.product.databaseId, line.quantity + 1)} disabled={line.quantity >= line.product.stock} aria-label={`Increase ${line.product.name} quantity`}><Plus /></Button>
+                <Input className="w-16 text-center" type="number" min="1" max={line.product.sellableStock} value={line.quantity} onChange={(event) => changeQuantity(line.product.databaseId, Number(event.target.value))} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); restoreScanFocus(); } }} aria-label={`${line.product.name} quantity`} />
+                <Button type="button" variant="ghost" size="icon" onClick={() => changeQuantity(line.product.databaseId, line.quantity + 1)} disabled={line.quantity >= line.product.sellableStock} aria-label={`Increase ${line.product.name} quantity`}><Plus /></Button>
                 <Button type="button" variant="ghost" size="icon" onClick={() => changeQuantity(line.product.databaseId, 0)} aria-label={`Remove ${line.product.name}`}><Trash /></Button>
               </div>
             </div>

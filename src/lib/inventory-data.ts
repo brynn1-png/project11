@@ -19,6 +19,8 @@ type CatalogRow = {
   selling_price: number | string;
   minimum_stock: number;
   quantity_on_hand: number | string;
+  sellable_quantity: number | string;
+  next_expiry: string | null;
   updated_at: string;
 };
 
@@ -77,6 +79,13 @@ export async function getInventorySnapshot(role: AppRole): Promise<InventorySnap
     };
   }
 
+  if (((catalogResult.data ?? []) as CatalogRow[]).some((row) => row.sellable_quantity == null)) {
+    return {
+      products: [], transactions: [], users: [], usersError: null,
+      error: "Inventory data needs the latest database migration before sales can continue.",
+    };
+  }
+
   if (profilesResult.error) {
     console.error("Unable to load staff accounts", profilesResult.error);
   }
@@ -94,6 +103,8 @@ export async function getInventorySnapshot(role: AppRole): Promise<InventorySnap
     unit: row.stock_unit,
     expiryTracking: row.expiry_tracking,
     stock: Number(row.quantity_on_hand),
+    sellableStock: Number(row.sellable_quantity),
+    nextExpiry: row.next_expiry ?? undefined,
     minimumStock: row.minimum_stock,
     price: Number(row.selling_price),
     updatedAt: row.updated_at,

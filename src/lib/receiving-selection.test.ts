@@ -14,6 +14,7 @@ const product: Product = {
   unit: "bottle",
   expiryTracking: "required",
   stock: 2,
+  sellableStock: 2,
   minimumStock: 1,
   price: 75,
   updatedAt: "2026-09-19T00:00:00.000Z",

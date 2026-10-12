@@ -31,6 +31,13 @@ export type SavedProduct = {
   name: string;
 };
 
+export type InventoryBatch = {
+  id: string;
+  batchNumber: string;
+  quantityRemaining: number;
+  expiresAt: string | null;
+};
+
 export type ArchivedProduct = {
   databaseId: string;
   productCode: string;
@@ -82,6 +89,40 @@ function errorMessage(error: { message: string }, fallback: string) {
   if (error.message.includes("Confirm removal of the remaining stock")) return error.message;
   if (error.message.includes("expiry") || error.message.includes("Expired") || error.message.includes("Manufactured")) return error.message;
   return fallback;
+}
+
+export async function listInventoryProductBatches(productId: string): Promise<{ ok: true; batches: InventoryBatch[] } | { ok: false; message: string }> {
+  const user = await getCurrentUser();
+  if (!user || !hasPermission(user.role, "products:manage")) return { ok: false, message: "Manager access is required to view batch details." };
+  const parsed = z.uuid().safeParse(productId);
+  if (!parsed.success) return { ok: false, message: "Product identifier is invalid." };
+  const limit = await consumeRateLimit("inventory_read");
+  if (!limit.allowed) return { ok: false, message: rateLimitMessage(limit) };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("inventory_batches")
+    .select("id, batch_number, quantity_remaining, expires_at")
+    .eq("product_id", parsed.data).gt("quantity_remaining", 0).order("received_at");
+  if (error) return { ok: false, message: "Batch details could not be loaded." };
+  return { ok: true, batches: (data ?? []).map((row) => ({
+    id: row.id, batchNumber: row.batch_number ?? "Unnumbered batch",
+    quantityRemaining: Number(row.quantity_remaining), expiresAt: row.expires_at,
+  })) };
+}
+
+export async function updateInventoryProductExpiry(productId: string, expiresAt: string): Promise<{ ok: true; updated: number } | { ok: false; message: string }> {
+  const user = await getCurrentUser();
+  if (!user || !hasPermission(user.role, "products:manage")) return { ok: false, message: "Manager access is required to change expiry dates." };
+  const parsed = z.object({ productId: z.uuid(), expiresAt: z.iso.date() }).safeParse({ productId, expiresAt });
+  if (!parsed.success) return { ok: false, message: "Enter a valid expiry date." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("update_inventory_product_expiry", {
+    p_product_id: parsed.data.productId, p_expires_at: parsed.data.expiresAt,
+  });
+  if (error) return { ok: false, message: errorMessage(error, "Expiry dates could not be updated. No changes were made.") };
+  revalidatePath("/");
+  return { ok: true, updated: Number(data ?? 0) };
 }
 
 export async function listInventoryCategories(): Promise<{ ok: true; categories: CategoryOption[] } | { ok: false; message: string }> {

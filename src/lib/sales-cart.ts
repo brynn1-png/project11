@@ -33,11 +33,11 @@ export function addProductToCart(cart: CartLine[], product: Product): CartResult
   const existing = cart.find((line) => line.product.databaseId === product.databaseId);
   const nextQuantity = (existing?.quantity ?? 0) + 1;
 
-  if (product.stock < 1) {
-    return { ok: false, message: `${product.name} is out of stock.` };
+  if (!(product.sellableStock > 0)) {
+    return { ok: false, message: product.stock > 0 ? `${product.name} has no sellable stock.` : `${product.name} is out of stock.` };
   }
-  if (nextQuantity > product.stock) {
-    return { ok: false, message: `Only ${formatQuantity(product.stock, product.unit)} are available.` };
+  if (nextQuantity > product.sellableStock) {
+    return { ok: false, message: `Only ${formatQuantity(product.sellableStock, product.unit)} are sellable.` };
   }
 
   return {
@@ -56,8 +56,8 @@ export function updateCartQuantity(cart: CartLine[], productId: string, nextQuan
   if (nextQuantity <= 0) {
     return { ok: true, quantity: 0, cart: cart.filter((item) => item.product.databaseId !== productId) };
   }
-  if (nextQuantity > line.product.stock) {
-    return { ok: false, message: `Only ${formatQuantity(line.product.stock, line.product.unit)} are available.` };
+  if (nextQuantity > line.product.sellableStock) {
+    return { ok: false, message: `Only ${formatQuantity(line.product.sellableStock, line.product.unit)} are sellable.` };
   }
 
   return {
