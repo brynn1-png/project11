@@ -68,12 +68,16 @@ body {
   min-width: 320px;
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-figtree), system-ui, sans-serif;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   font-feature-settings: "tnum" 1, "ss01" 1;
 }
 
 button, input, select, textarea { font: inherit; }
 button { -webkit-tap-highlight-color: transparent; }
+.theme-light-action { display: flex; }
+.theme-dark-action { display: none; }
+:root.dark .theme-light-action { display: none; }
+:root.dark .theme-dark-action { display: flex; }
 
 ::selection { background: #fff48a; color: #172318; }
 

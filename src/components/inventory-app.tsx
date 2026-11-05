@@ -114,7 +114,6 @@ export function InventoryApp({ currentUser, users, dataError, usersError }: { cu
   const [mobileNav, setMobileNav] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const [toast, setToast] = useState("");
   const [receivingProductId, setReceivingProductId] = useState<string | null>(null);
   const [startProductRegistration, setStartProductRegistration] = useState(false);
@@ -135,7 +134,6 @@ export function InventoryApp({ currentUser, users, dataError, usersError }: { cu
   useEffect(() => {
     const savedTheme = window.localStorage.getItem("south-emerald-theme");
     const isDark = savedTheme === "dark";
-    setDarkMode(isDark);
     document.documentElement.classList.toggle("dark", isDark);
   }, []);
 
@@ -158,9 +156,7 @@ export function InventoryApp({ currentUser, users, dataError, usersError }: { cu
   }, [profileOpen]);
 
   function toggleTheme() {
-    const nextDark = !darkMode;
-    setDarkMode(nextDark);
-    document.documentElement.classList.toggle("dark", nextDark);
+    const nextDark = document.documentElement.classList.toggle("dark");
     window.localStorage.setItem("south-emerald-theme", nextDark ? "dark" : "light");
   }
 
@@ -303,7 +299,7 @@ export function InventoryApp({ currentUser, users, dataError, usersError }: { cu
                 <div className="border-b border-[var(--border)] p-4"><p className="truncate font-bold">{currentUser.fullName}</p><p className="mt-1 truncate text-sm text-[var(--muted-foreground)]">{currentUser.email}</p><span className="mt-3 inline-flex rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent-strong)]">{formatRole(currentUser.role)}</span></div>
                 <div className="grid gap-1 p-2">
                   <button type="button" onClick={() => { setProfileOpen(false); setManualOpen(true); }} className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-left text-sm font-medium hover:bg-[var(--muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"><BookOpen size={19} />How to use this system</button>
-                  <button type="button" onClick={toggleTheme} className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-left text-sm font-medium hover:bg-[var(--muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]">{darkMode ? <Sun size={19} /> : <Moon size={19} />}{darkMode ? "Switch to light theme" : "Switch to dark theme"}</button>
+                  <button type="button" onClick={toggleTheme} className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-left text-sm font-medium hover:bg-[var(--muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"><span className="theme-light-action items-center gap-3"><Moon size={19} />Switch to dark theme</span><span className="theme-dark-action items-center gap-3"><Sun size={19} />Switch to light theme</span></button>
                 </div>
               </section>}
             </div>
@@ -339,7 +335,7 @@ export function InventoryApp({ currentUser, users, dataError, usersError }: { cu
             <section><h3 className="font-bold text-[var(--foreground)]">Start here</h3><p>Use the sidebar to open the areas available to your staff role. The Dashboard shows stock health, recent activity, and shortcuts. The stock alert bell opens affected products and offers the next available action.</p></section>
             <section><h3 className="font-bold text-[var(--foreground)]">Record a sale</h3><p>Open Sales, scan or enter each product, adjust quantities, enter the cash received, then confirm the sale. Review or print the receipt before starting another sale. A live database connection is required to complete checkout.</p></section>
             <section><h3 className="font-bold text-[var(--foreground)]">Receive stock</h3><p>Open Receive Stock or use a product shortcut. Select or scan the product, enter quantity and batch details such as cost and expiry, then submit the receipt. New products can be registered from Products by staff with permission.</p></section>
-            <section><h3 className="font-bold text-[var(--foreground)]">Manage products and stock</h3><p>Products is the catalog for product details, categories, barcodes, and archived items. Stock Levels is a read-only view for filtering products by availability. Keep each product's minimum stock level current so alerts are useful.</p></section>
+            <section><h3 className="font-bold text-[var(--foreground)]">Manage products and stock</h3><p>Products is the catalog for product details, categories, barcodes, and archived items. Stock Levels is a read-only view for filtering products by availability. Keep each product&apos;s minimum stock level current so alerts are useful.</p></section>
             <section><h3 className="font-bold text-[var(--foreground)]">Handle a return</h3><p>Open Returns, find the original sale, select returned quantities and item condition, then submit the request. A manager or administrator reviews pending requests in Daily Verification. Only approved resellable items go back into available stock.</p></section>
             <section><h3 className="font-bold text-[var(--foreground)]">Review records</h3><p>Activity & Receipts contains stock movements, sales receipts, and customer returns. Reports provides date-based sales and inventory summaries. In Daily Verification, submit business-day records for review and mark them verified after pending returns are resolved.</p></section>
             <p className="border-t border-[var(--border)] pt-4 text-xs">Your role controls which pages and actions are available. Use the profile menu to check the signed-in account, change the theme, or sign out from the sidebar.</p>

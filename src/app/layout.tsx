@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
-import { Figtree } from "next/font/google";
 import { APP_NAME } from "@/lib/ui-copy";
 import "./globals.css";
-
-const figtree = Figtree({ subsets: ["latin"], variable: "--font-figtree" });
 
 export const metadata: Metadata = {
   title: APP_NAME,
@@ -14,7 +11,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className={figtree.variable}>{children}</body>
+      <body>{children}</body>
     </html>
   );
 }
