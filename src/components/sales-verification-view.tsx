@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { CaretDown, CheckCircle, Clock, WarningCircle, XCircle } from "@phosphor-icons/react";
-import { changeBusinessDayStatus, loadBusinessDaySales, loadSalesVerification, reviewSaleReturn, type BusinessDaySale, type BusinessDaySummary, type PendingReturnSummary } from "@/app/sales/actions";
+import { changeBusinessDayStatus, loadBusinessDaySales, loadSalesVerification, reopenCashierRemittance, reviewSaleReturn, submitCashierRemittance, type BusinessDaySale, type BusinessDaySummary, type CashierRemittanceSummary, type PendingReturnSummary } from "@/app/sales/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 function peso(value: number) { return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(value); }
 function date(value: string) { return new Intl.DateTimeFormat("en-PH", { dateStyle: "medium" }).format(new Date(`${value}T00:00:00`)); }
 
-export function SalesVerificationView({ notify }: { notify: (message: string) => void }) {
+export function SalesVerificationView({ notify, canVerify, canReopen }: { notify: (message: string) => void; canVerify: boolean; canReopen: boolean }) {
   const [days, setDays] = useState<BusinessDaySummary[]>([]);
+  const [remittances, setRemittances] = useState<CashierRemittanceSummary[]>([]);
   const [returns, setReturns] = useState<PendingReturnSummary[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -25,19 +26,25 @@ export function SalesVerificationView({ notify }: { notify: (message: string) =>
 
   const refresh = useCallback(async () => {
     const result = await loadSalesVerification();
-    setDays(result.days); setReturns(result.returns); setError(result.error ?? ""); setLoading(false);
+    setDays(result.days); setRemittances(result.remittances); setReturns(result.returns); setError(result.error ?? ""); setLoading(false);
   }, []);
   useEffect(() => {
     let active = true;
     void loadSalesVerification().then((result) => {
       if (!active) return;
-      setDays(result.days); setReturns(result.returns); setError(result.error ?? ""); setLoading(false);
+      setDays(result.days); setRemittances(result.remittances); setReturns(result.returns); setError(result.error ?? ""); setLoading(false);
     });
     return () => { active = false; };
   }, []);
 
   function updateDay(id: string, action: "submit" | "verify") {
     startTransition(async () => { const result = await changeBusinessDayStatus(id, action); if (!result.ok) return setError(result.message); notify(result.message); await refresh(); });
+  }
+  function remitDay(id: string) {
+    startTransition(async () => { const result = await submitCashierRemittance(id); if (!result.ok) return setError(result.message); notify(result.message); await refresh(); });
+  }
+  function reopenRemittance(dayId: string, cashierId: string) {
+    startTransition(async () => { const result = await reopenCashierRemittance(dayId, cashierId); if (!result.ok) return setError(result.message); notify(result.message); await refresh(); });
   }
   function reviewReturn(id: string, approve: boolean) {
     startTransition(async () => { const result = await reviewSaleReturn(id, approve); if (!result.ok) return setError(result.message); notify(result.message); await refresh(); });
@@ -62,10 +69,28 @@ export function SalesVerificationView({ notify }: { notify: (message: string) =>
   }
 
   if (loading) return <div className="grid gap-4"><Skeleton className="h-48 rounded-2xl" /><Skeleton className="h-64 rounded-2xl" /></div>;
+  if (!canVerify) return <div className="grid gap-5">
+    {error && <Alert variant="destructive"><WarningCircle /><AlertTitle>Daily sales unavailable</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
+    <Card className="border-[var(--border)] bg-[var(--surface)] shadow-none"><CardHeader><CardTitle>My daily sales</CardTitle><CardDescription>Review your completed sales, then remit them when your shift is done. An administrator must reopen a remittance before you can record a missed sale that day.</CardDescription></CardHeader><CardContent className="flex flex-col gap-3">
+      {remittances.length === 0 ? <p className="py-8 text-center text-sm text-[var(--muted-foreground)]">Your daily record appears after your first completed sale.</p> : remittances.map((row) => {
+        const expanded = expandedDayId === row.businessDayId;
+        const sales = daySales[row.businessDayId] ?? [];
+        return <article key={row.businessDayId} className="overflow-hidden rounded-xl border border-[var(--border)]">
+          <div className="flex flex-wrap items-center justify-between gap-4 p-4">
+            <div><p className="font-semibold">{date(row.businessDate)}</p><div className="mt-2 flex flex-wrap items-center gap-3"><Badge variant={row.remittedAt ? "default" : "outline"}>{row.remittedAt ? "Remitted" : "Not remitted"}</Badge><button type="button" aria-expanded={expanded} aria-controls={`sales-${row.businessDayId}`} onClick={() => void toggleDaySales(row.businessDayId)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold text-[var(--accent-strong)] hover:bg-[var(--accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]">{expanded ? "Hide sales" : `Review ${row.saleCount} sale${row.saleCount === 1 ? "" : "s"}`}<CaretDown size={15} className={expanded ? "rotate-180 transition-transform" : "transition-transform"} /></button></div></div>
+            <div className="flex flex-wrap items-center gap-5"><Metric label="Sales" value={row.saleCount} /><Metric label="Items sold" value={row.itemCount} /><Metric label="Gross sales" value={peso(row.grossTotal)} />{!row.remittedAt && row.storeStatus === "open" && <Button disabled={isPending} onClick={() => remitDay(row.businessDayId)}><Clock data-icon="inline-start" />Remit my sales</Button>}</div>
+          </div>
+          {expanded && <div id={`sales-${row.businessDayId}`} className="border-t border-[var(--border)] bg-[var(--background)] p-4">{salesLoadingDayId === row.businessDayId ? <Skeleton className="h-20 rounded-xl" /> : salesErrors[row.businessDayId] ? <div role="alert">{salesErrors[row.businessDayId]} <Button variant="secondary" size="sm" onClick={() => void fetchDaySales(row.businessDayId)}>Try again</Button></div> : <div className="grid gap-3">{sales.map((sale) => <SaleReviewCard key={sale.saleNumber} sale={sale} />)}</div>}</div>}
+        </article>;
+      })}
+    </CardContent></Card>
+  </div>;
   return <div className="grid gap-5">
     {error && <Alert variant="destructive"><WarningCircle /><AlertTitle>Verification data unavailable</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
-    <Card className="border-[var(--border)] bg-[var(--surface)] shadow-none"><CardHeader><CardTitle>Daily sales records</CardTitle><CardDescription>Open a day to review every completed sale before submitting or verifying its records.</CardDescription></CardHeader><CardContent className="flex flex-col gap-3">{days.length === 0 ? <p className="py-8 text-center text-sm text-[var(--muted-foreground)]">A daily record will open automatically when the first sale is confirmed.</p> : days.map((day) => {
+    <Card className="border-[var(--border)] bg-[var(--surface)] shadow-none"><CardHeader><CardTitle>Daily sales records</CardTitle><CardDescription>Review completed sales and cashier remittances before submitting the store day for verification.</CardDescription></CardHeader><CardContent className="flex flex-col gap-3">{days.length === 0 ? <p className="py-8 text-center text-sm text-[var(--muted-foreground)]">A daily record will open automatically when the first sale is confirmed.</p> : days.map((day) => {
       const hasPendingReturn = returns.some((item) => item.businessDayId === day.id);
+      const cashierRows = remittances.filter((row) => row.businessDayId === day.id);
+      const waitingForCashiers = cashierRows.some((row) => !row.remittedAt);
       const expanded = expandedDayId === day.id;
       const sales = daySales[day.id] ?? [];
       return <article key={day.id} className="overflow-hidden rounded-xl border border-[var(--border)]">
@@ -83,8 +108,9 @@ export function SalesVerificationView({ notify }: { notify: (message: string) =>
           <Metric label="Items sold" value={day.itemCount} />
           <Metric label="Returns" value={day.returnCount} />
           <Metric label="Gross sales" value={peso(day.grossTotal)} />
-          <div className="lg:justify-self-end">{day.status === "open" ? <Button disabled={isPending} onClick={() => updateDay(day.id, "submit")}><Clock data-icon="inline-start" />Submit for review</Button> : day.status === "pending_review" ? <Button disabled={isPending || hasPendingReturn} onClick={() => updateDay(day.id, "verify")} title={hasPendingReturn ? "Review this day’s pending returns first." : undefined}><CheckCircle data-icon="inline-start" />Mark verified</Button> : <span className="text-sm font-semibold text-[var(--accent)]">Verified</span>}</div>
+          <div className="lg:justify-self-end">{day.status === "open" ? <Button disabled={isPending || waitingForCashiers} title={waitingForCashiers ? "Wait for every cashier with sales to remit." : undefined} onClick={() => updateDay(day.id, "submit")}><Clock data-icon="inline-start" />Submit for review</Button> : day.status === "pending_review" ? <Button disabled={isPending || hasPendingReturn} onClick={() => updateDay(day.id, "verify")} title={hasPendingReturn ? "Review this day’s pending returns first." : undefined}><CheckCircle data-icon="inline-start" />Mark verified</Button> : <span className="text-sm font-semibold text-[var(--accent)]">Verified</span>}</div>
         </div>
+        {cashierRows.length > 0 && <div className="grid gap-2 border-t border-[var(--border)] px-4 py-3"><h3 className="text-sm font-semibold">Cashier remittances</h3>{cashierRows.map((row) => <div key={row.cashierId} className="flex flex-wrap items-center justify-between gap-3 text-sm"><span>{row.cashierName} · {row.saleCount} sale{row.saleCount === 1 ? "" : "s"} · {peso(row.grossTotal)}</span><div className="flex items-center gap-2"><Badge variant={row.remittedAt ? "default" : "outline"}>{row.remittedAt ? "Remitted" : "Awaiting remittance"}</Badge>{canReopen && row.canReopen && day.status === "open" && row.remittedAt && <Button size="sm" variant="secondary" disabled={isPending} onClick={() => reopenRemittance(day.id, row.cashierId)}>Reopen</Button>}</div></div>)}</div>}
         {expanded && <div id={`sales-${day.id}`} className="border-t border-[var(--border)] bg-[var(--background)] p-4">
           <h3 className="mb-3 text-sm font-bold">Sales for {date(day.businessDate)}</h3>
           {salesLoadingDayId === day.id ? <Skeleton className="h-20 rounded-xl" />

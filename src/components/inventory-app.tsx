@@ -15,6 +15,7 @@ import { ReturnsView } from "@/components/returns-view";
 import { SalesVerificationView } from "@/components/sales-verification-view";
 import { ProductManagementView } from "@/components/product-management-view";
 import { StockInView } from "@/components/stock-in-view";
+import { ProductIssuesView } from "@/components/product-issues-view";
 import { HistoryView } from "@/components/history-view";
 import { DashboardCharts } from "@/components/dashboard-charts";
 import { ReportsView } from "@/components/reports-view";
@@ -31,7 +32,7 @@ import type { CurrentUser } from "@/lib/auth/current-user";
 import { APP_SHORT_NAME } from "@/lib/ui-copy";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-type View = "dashboard" | "products" | "sales" | "returns" | "stock-in" | "inventory" | "transactions" | "sales-review" | "reports" | "users";
+type View = "dashboard" | "products" | "sales" | "returns" | "stock-in" | "issues" | "inventory" | "transactions" | "sales-review" | "reports" | "users";
 type InventoryFilter = "All" | "In Stock" | "Low Stock" | "Out of Stock";
 
 type NavItem = { id: View; label: string; icon: typeof CirclesFour };
@@ -56,6 +57,7 @@ const NAV_GROUPS: { id: string; label: string; items: NavItem[] }[] = [
     items: [
       { id: "products", label: "Products", icon: Package },
       { id: "stock-in", label: "Receive Stock", icon: ArrowDown },
+      { id: "issues", label: "Product Issues", icon: Warning },
       { id: "inventory", label: "Stock Levels", icon: Storefront },
     ],
   },
@@ -79,6 +81,7 @@ const VIEW_PERMISSIONS: Partial<Record<View, Permission>> = {
   dashboard: "dashboard:view",
   products: "products:view",
   "stock-in": "stock:receive",
+  issues: "issues:report",
   sales: "sales:record",
   returns: "sales:record",
   inventory: "products:view",
@@ -94,6 +97,7 @@ const VIEW_TITLES: Record<View, string> = {
   sales: "Sales",
   returns: "Returns",
   "stock-in": "Receive Stock",
+  issues: "Product Issues",
   inventory: "Stock Levels",
   transactions: "Activity & Receipts",
   "sales-review": "Daily Verification",
@@ -227,7 +231,7 @@ export function InventoryApp({ currentUser, users, dataError, usersError }: { cu
     setView("inventory");
   }
 
-  const pageTitle = view === "dashboard" ? `Good morning, ${currentUser.fullName.split(" ")[0]}` : VIEW_TITLES[view];
+  const pageTitle = view === "dashboard" ? `Good morning, ${currentUser.fullName.split(" ")[0]}` : view === "sales-review" && currentUser.role === "cashier" ? "My Daily Sales" : VIEW_TITLES[view];
   return (
     <div className="min-h-[100dvh] bg-[var(--background)]">
       <Sidebar currentUser={currentUser} view={view} open={mobileNav} onClose={() => setMobileNav(false)} onNavigate={(next) => { navigate(next); setMobileNav(false); }} />
@@ -235,7 +239,7 @@ export function InventoryApp({ currentUser, users, dataError, usersError }: { cu
       <div className="lg:pl-[264px]">
         <header className="no-print sticky top-0 z-20 flex h-16 items-center justify-between border-b border-[var(--border)] bg-[var(--header)] px-4 sm:px-6 lg:px-8">
           <button className="grid size-11 place-items-center rounded-xl hover:bg-[var(--muted)] lg:hidden" onClick={() => setMobileNav(true)} aria-label="Open navigation"><List size={22} /></button>
-          <div className="hidden items-center gap-2 text-sm text-[var(--muted-foreground)] lg:flex"><span>South Emerald</span><CaretRight size={14} /><span className="font-semibold text-[var(--foreground)]">{VIEW_TITLES[view]}</span></div>
+          <div className="hidden items-center gap-2 text-sm text-[var(--muted-foreground)] lg:flex"><span>South Emerald</span><CaretRight size={14} /><span className="font-semibold text-[var(--foreground)]">{view === "sales-review" && currentUser.role === "cashier" ? "My Daily Sales" : VIEW_TITLES[view]}</span></div>
           <div className="ml-auto flex items-center gap-2">
             <div className="relative" ref={notificationRef}>
               <button
@@ -319,9 +323,10 @@ export function InventoryApp({ currentUser, users, dataError, usersError }: { cu
             {view === "sales" && <SalesView notify={notify} />}
             {view === "returns" && <ReturnsView notify={notify} />}
             {view === "stock-in" && <StockInView initialProductId={receivingProductId} canRegisterProduct={hasPermission(currentUser.role, "products:manage")} showMargin={hasPermission(currentUser.role, "reports:view_costs")} notify={notify} onRegisterProduct={() => { setStartProductRegistration(true); setView("products"); }} />}
+            {view === "issues" && <ProductIssuesView canResolve={hasPermission(currentUser.role, "issues:resolve")} notify={notify} />}
             {view === "inventory" && <InventoryView status={inventoryFilter} onStatusChange={setInventoryFilter} />}
             {view === "transactions" && <HistoryView />}
-            {view === "sales-review" && <SalesVerificationView notify={notify} />}
+            {view === "sales-review" && <SalesVerificationView notify={notify} canVerify={hasPermission(currentUser.role, "sales:verify")} canReopen={currentUser.role === "administrator"} />}
             {view === "reports" && <ReportsView notify={notify} canViewSales={hasPermission(currentUser.role, "reports:view_sales_own")} canViewAllSales={hasPermission(currentUser.role, "reports:view_sales_all")} canViewInventory={hasPermission(currentUser.role, "reports:view_inventory")} />}
             {view === "users" && <StaffAccountsView users={users} usersError={usersError} currentUserId={currentUser.id} canManage={hasPermission(currentUser.role, "users:manage")} notify={notify} />}
           </div>
@@ -335,9 +340,10 @@ export function InventoryApp({ currentUser, users, dataError, usersError }: { cu
             <section><h3 className="font-bold text-[var(--foreground)]">Start here</h3><p>Use the sidebar to open the areas available to your staff role. The Dashboard shows stock health, recent activity, and shortcuts. The stock alert bell opens affected products and offers the next available action.</p></section>
             <section><h3 className="font-bold text-[var(--foreground)]">Record a sale</h3><p>Open Sales, scan or enter each product, adjust quantities, enter the cash received, then confirm the sale. Review or print the receipt before starting another sale. A live database connection is required to complete checkout.</p></section>
             <section><h3 className="font-bold text-[var(--foreground)]">Receive stock</h3><p>Open Receive Stock or use a product shortcut. Select or scan the product, enter quantity and batch details such as cost and expiry, then submit the receipt. New products can be registered from Products by staff with permission.</p></section>
+            <section><h3 className="font-bold text-[var(--foreground)]">Report a product issue</h3><p>Open Product Issues, select or scan a product, enter the affected quantity and batch if known, then describe the damage or concern. Submitted units are set aside immediately. A manager or administrator confirms the loss or returns eligible units to stock.</p></section>
             <section><h3 className="font-bold text-[var(--foreground)]">Manage products and stock</h3><p>Products is the catalog for product details, categories, barcodes, and archived items. Stock Levels is a read-only view for filtering products by availability. Keep each product&apos;s minimum stock level current so alerts are useful.</p></section>
             <section><h3 className="font-bold text-[var(--foreground)]">Handle a return</h3><p>Open Returns, find the original sale, select returned quantities and item condition, then submit the request. A manager or administrator reviews pending requests in Daily Verification. Only approved resellable items go back into available stock.</p></section>
-            <section><h3 className="font-bold text-[var(--foreground)]">Review records</h3><p>Activity & Receipts contains stock movements, sales receipts, and customer returns. Reports provides date-based sales and inventory summaries. In Daily Verification, submit business-day records for review and mark them verified after pending returns are resolved.</p></section>
+            <section><h3 className="font-bold text-[var(--foreground)]">Review records</h3><p>Activity & Receipts contains stock movements, sales receipts, and customer returns. Reports provides date-based sales and inventory summaries. Cashiers remit their own sales at shift end in My Daily Sales. Managers review all cashier remittances and submit or verify the store day in Daily Verification after pending returns are resolved.</p></section>
             <p className="border-t border-[var(--border)] pt-4 text-xs">Your role controls which pages and actions are available. Use the profile menu to check the signed-in account, change the theme, or sign out from the sidebar.</p>
           </div>
         </DialogContent>
@@ -364,7 +370,7 @@ function Sidebar({ currentUser, view, open, onClose, onNavigate }: { currentUser
     ...group,
     items: group.items.filter((item) => {
       const permission = VIEW_PERMISSIONS[item.id];
-      return !permission || hasPermission(currentUser.role, permission);
+      return !permission || hasPermission(currentUser.role, permission) || (item.id === "sales-review" && hasPermission(currentUser.role, "sales:remit"));
     }),
   })).filter((group) => group.items.length > 0);
   return <>
@@ -375,7 +381,7 @@ function Sidebar({ currentUser, view, open, onClose, onNavigate }: { currentUser
         {visibleGroups.map((group, groupIndex) => <section key={group.id} className={cn(groupIndex > 0 && "mt-4")} aria-labelledby={`nav-group-${group.id}`}>
           <p id={`nav-group-${group.id}`} className="px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-white/45">{group.label}</p>
           <div className="mt-1 grid gap-1">
-            {group.items.map((item) => { const Icon = item.icon; const active = view === item.id; return <button key={item.id} onClick={() => onNavigate(item.id)} className={cn("flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-xl px-3 text-left text-sm font-medium transition-colors", active ? "bg-[#f4e90b] text-[#173b27]" : "text-white/70 hover:bg-white/[.08] hover:text-white")}><Icon size={19} weight={active ? "fill" : "regular"} />{item.label}</button>; })}
+            {group.items.map((item) => { const Icon = item.icon; const active = view === item.id; return <button key={item.id} onClick={() => onNavigate(item.id)} className={cn("flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-xl px-3 text-left text-sm font-medium transition-colors", active ? "bg-[#f4e90b] text-[#173b27]" : "text-white/70 hover:bg-white/[.08] hover:text-white")}><Icon size={19} weight={active ? "fill" : "regular"} />{item.id === "sales-review" && currentUser.role === "cashier" ? "My Daily Sales" : item.label}</button>; })}
           </div>
         </section>)}
       </nav>

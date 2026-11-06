@@ -1,11 +1,39 @@
 # Progress Log
 
-## Current State Summary (Updated: 2026-10-01)
-- **Active Task:** Task #036 — Project PDF documentation via document-generator MCP
-- **Status:** 🟢 Done
-- **Next Action:** None pending. Optional: Word version via `gerar_documento_word`, or regenerate the PDF after major docs changes.
-- **Blockers:** None. Prior open item remains: live browser acceptance screenshots still uncaptured.
-- **Last Completed:** Task #036 PDF documentation on 2026-10-01
+## Current State Summary (Updated: 2026-11-07)
+- **Active Task:** Task #038 — Product Issues reporting and stock isolation
+- **Status:** 🟢 Done in code; hosted database acceptance pending
+- **Next Action:** Apply `20261107000200_product_issues.sql` after prior migrations and complete PND-010 acceptance.
+- **Blockers:** No local PostgreSQL service for SQL integration checks; hosted migration remains pending.
+- **Last Completed:** Task #038 code implementation on 2026-11-07
+
+---
+
+## 2026-11-07 — Task #038: Product Issues Reporting
+**Status:** 🟢 Done in code; hosted acceptance pending
+**Summary:** Added staff issue reports with preset/custom flags, immediate batch stock isolation, shared history, and management-only loss confirmation or safe release.
+**Steps completed:**
+- [x] Added protected report/allocation tables and atomic submission/resolution functions; regenerated master SQL.
+- [x] Added role-checked Server Actions, validated form input, Product Issues page, sidebar entry, and help text.
+- [x] Fixed barcode Enter handling and async product selection; added report pagination after review.
+- [x] Verified 113 tests, TypeScript, ESLint, production build, and master SQL generation.
+- [ ] Apply hosted migration and complete physical/browser acceptance in PND-010.
+**Notes:** SQL transactions could not be executed locally because PostgreSQL/Docker are unavailable.
+
+---
+
+## 2026-11-07 — Task #037: Per-Cashier Daily Sales Remittance
+**Status:** 🟢 Done in code; hosted acceptance pending
+**Summary:** Added per-cashier remittance records, ownership-safe reads, sale blocking after remittance, administrator reopening, and management-only store-day verification.
+**Steps completed:**
+- [x] Added migration and regenerated the master installer.
+- [x] Added cashier-only My Daily Sales and management remittance statuses in Daily Verification.
+- [x] Added Server Action authorization and updated product/setup/security documentation.
+- [x] Preserved remittance history across later role changes and guarded deactivation or role changes with outstanding open-day sales.
+- [x] Verified TypeScript, lint, 108 tests, build, and master SQL generation.
+- [ ] Apply migration and complete two-cashier database/browser acceptance (PND-009).
+**Notes:** The full test suite needed a workspace-local TEMP directory in the Windows sandbox. Local PostgreSQL and Docker are unavailable.
+**User acceptance:** On 2026-11-07, the user confirmed the cashier submission flow passed and is working in their interface. The remaining PND-009 scenarios were not individually reported.
 
 ---
 

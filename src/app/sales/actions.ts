@@ -57,6 +57,7 @@ export async function recordSale(input: RecordSaleInput): Promise<RecordSaleResu
     if (error.message.includes("Insufficient sellable stock")) return { ok: false, message: error.message };
     if (error.message.includes("Cash received")) return { ok: false, message: error.message };
     if (error.message.includes("business day is not open")) return { ok: false, message: "Today’s sales have already been submitted for review." };
+    if (error.message.includes("already been remitted")) return { ok: false, message: "Your sales for today have been remitted. Ask an administrator to reopen your remittance if a sale was missed." };
     return { ok: false, message: "The sale could not be confirmed. Inventory was not changed. Refresh and try again." };
   }
 
@@ -192,14 +193,16 @@ export async function requestSaleReturn(input: z.infer<typeof returnRequestSchem
 }
 
 export type BusinessDaySummary = { id: string; businessDate: string; status: "open" | "pending_review" | "verified"; saleCount: number; itemCount: number; grossTotal: number; returnCount: number };
+export type CashierRemittanceSummary = { businessDayId: string; businessDate: string; storeStatus: BusinessDaySummary["status"]; cashierId: string; cashierName: string; saleCount: number; itemCount: number; grossTotal: number; remittedAt: string | null; canReopen: boolean };
 export type BusinessDaySale = { saleNumber: string; soldAt: string; cashierName: string; totalAmount: number; items: Array<{ productName: string; quantity: number; unitPrice: number; lineTotal: number }> };
 export type PendingReturnSummary = { id: string; businessDayId: string; returnNumber: string; saleNumber: string; reason: string; requestedBy: string; requestedAt: string; itemCount: number; items: Array<{ productName: string; quantity: number; disposition: "restock" | "damaged" | "expired" }> };
 
 type BusinessDaySaleRow = { sale_number: number | string; sold_at: string; cashier_name: string; total_amount: number | string; items: Array<{ product_name: string; quantity: number | string; unit_price: number | string; line_total: number | string }> };
+type CashierRemittanceRow = { business_day_id: string; business_date: string; store_status: CashierRemittanceSummary["storeStatus"]; cashier_id: string; cashier_name: string; sale_count: number | string; item_count: number | string; gross_total: number | string; remitted_at: string | null; can_reopen: boolean };
 
 export async function loadBusinessDaySales(id: string): Promise<{ ok: true; sales: BusinessDaySale[] } | { ok: false; message: string }> {
   const user = await getCurrentUser();
-  if (!user || !hasPermission(user.role, "sales:verify")) return { ok: false, message: "Manager access is required." };
+  if (!user || (!hasPermission(user.role, "sales:verify") && !hasPermission(user.role, "sales:remit"))) return { ok: false, message: "Daily sales access is required." };
   const parsed = z.uuid().safeParse(id);
   if (!parsed.success) return { ok: false, message: "Daily sales record is invalid." };
   const limit = await consumeRateLimit("history_read");
@@ -217,21 +220,49 @@ export async function loadBusinessDaySales(id: string): Promise<{ ok: true; sale
   })) };
 }
 
-export async function loadSalesVerification(): Promise<{ days: BusinessDaySummary[]; returns: PendingReturnSummary[]; error?: string }> {
+export async function loadSalesVerification(): Promise<{ days: BusinessDaySummary[]; remittances: CashierRemittanceSummary[]; returns: PendingReturnSummary[]; error?: string }> {
   const user = await getCurrentUser();
-  if (!user || !hasPermission(user.role, "sales:verify")) return { days: [], returns: [], error: "Manager access is required." };
+  if (!user || (!hasPermission(user.role, "sales:verify") && !hasPermission(user.role, "sales:remit"))) return { days: [], remittances: [], returns: [], error: "Daily sales access is required." };
   const limit = await consumeRateLimit("history_read");
-  if (!limit.allowed) return { days: [], returns: [], error: rateLimitMessage(limit) };
+  if (!limit.allowed) return { days: [], remittances: [], returns: [], error: rateLimitMessage(limit) };
   const supabase = await createClient();
-  const [daysResult, returnsResult] = await Promise.all([
-    supabase.rpc("get_business_day_summaries", { p_limit: 14 }),
-    supabase.rpc("get_pending_return_summaries"),
+  const canVerify = hasPermission(user.role, "sales:verify");
+  const [remittancesResult, daysResult, returnsResult] = await Promise.all([
+    supabase.rpc("get_cashier_remittance_summaries", { p_limit: 14 }),
+    canVerify ? supabase.rpc("get_business_day_summaries", { p_limit: 14 }) : Promise.resolve({ data: [], error: null }),
+    canVerify ? supabase.rpc("get_pending_return_summaries") : Promise.resolve({ data: [], error: null }),
   ]);
-  if (daysResult.error || returnsResult.error) return { days: [], returns: [], error: "Daily verification data could not be loaded." };
+  if (remittancesResult.error || daysResult.error || returnsResult.error) return { days: [], remittances: [], returns: [], error: "Daily verification data could not be loaded. Apply the latest database migration if this feature was just updated." };
   return {
     days: ((daysResult.data ?? []) as BusinessDayRow[]).map((row) => ({ id: row.id, businessDate: row.business_date, status: row.status, saleCount: Number(row.sale_count), itemCount: Number(row.item_count), grossTotal: Number(row.gross_total), returnCount: Number(row.return_count) })),
+    remittances: ((remittancesResult.data ?? []) as CashierRemittanceRow[]).map((row) => ({ businessDayId: row.business_day_id, businessDate: row.business_date, storeStatus: row.store_status, cashierId: row.cashier_id, cashierName: row.cashier_name, saleCount: Number(row.sale_count), itemCount: Number(row.item_count), grossTotal: Number(row.gross_total), remittedAt: row.remitted_at, canReopen: row.can_reopen })),
     returns: ((returnsResult.data ?? []) as PendingReturnRow[]).map((row) => ({ id: row.id, businessDayId: row.business_day_id, returnNumber: String(row.return_number), saleNumber: String(row.sale_number), reason: row.reason, requestedBy: row.requested_by_name, requestedAt: row.requested_at, itemCount: Number(row.item_count), items: row.items.map((item) => ({ productName: item.product_name, quantity: Number(item.quantity), disposition: item.disposition })) })),
   };
+}
+
+export async function submitCashierRemittance(dayId: string) {
+  const user = await getCurrentUser();
+  if (!user || !hasPermission(user.role, "sales:remit")) return { ok: false, message: "Cashier access is required." };
+  const parsed = z.uuid().safeParse(dayId);
+  if (!parsed.success) return { ok: false, message: "Daily sales record is invalid." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("submit_cashier_remittance", { p_business_day_id: parsed.data });
+  if (error) return { ok: false, message: databaseRateLimitMessage(error) ?? error.message };
+  revalidatePath("/");
+  return { ok: true, message: "Your daily sales have been remitted for review." };
+}
+
+export async function reopenCashierRemittance(dayId: string, cashierId: string) {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "administrator") return { ok: false, message: "Administrator access is required." };
+  const day = z.uuid().safeParse(dayId);
+  const cashier = z.uuid().safeParse(cashierId);
+  if (!day.success || !cashier.success) return { ok: false, message: "Cashier remittance request is invalid." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("reopen_cashier_remittance", { p_business_day_id: day.data, p_cashier_id: cashier.data });
+  if (error) return { ok: false, message: databaseRateLimitMessage(error) ?? error.message };
+  revalidatePath("/");
+  return { ok: true, message: "Cashier remittance reopened. The cashier can record a missed sale." };
 }
 
 export async function changeBusinessDayStatus(id: string, action: "submit" | "verify") {

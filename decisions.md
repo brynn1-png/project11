@@ -1,10 +1,33 @@
 # Decision Log
 
-## Current State Summary (Updated: 2026-10-01)
-- **Active Decision:** Configure `document-generator-mcp` in a project-level `opencode.json` (not global) for PDF generation
-- **Status:** 🟢 Confirmed
-- **Latest Decision:** Build the PDF content from repo sources (`PRODUCT.md`, `docs/*`, migrations, actions) rather than a free-form summary
-- **Open Questions:** Task #033: forced password change at first sign-in; live browser acceptance. Prior open item: live print acceptance for the barcode modal.
+## Current State Summary (Updated: 2026-11-07)
+- **Active Decision:** Isolate reported product-issue units immediately and require management resolution
+- **Status:** 🟢 Approved by user
+- **Latest Decision:** Keep per-batch allocations so a released report restores its original units only when the product and batches remain eligible
+- **Open Questions:** Hosted SQL and browser acceptance remain pending; photos and supplier claims are outside the approved scope.
+
+---
+
+## 2026-11-07 — Task #038: Product Issues Design
+**Decision:** Use one product per issue report with Damaged, Other issue, or a named Custom flag.
+**Why:** Each report has one clear quantity, batch allocation, status, and resolution; custom labels need no schema migration.
+**Decision:** Submission immediately decrements source batches and records adjustments. Management confirms the loss or restores the same batch allocations if product and batch eligibility still hold.
+**Why:** Known suspect stock must not remain sellable while review waits. Database locks and transaction rollback protect concurrent sales and failed restorations.
+**Decision:** All active staff can submit and read the shared issue list; only administrators and managers can resolve. Pending reports sort first, with paginated history.
+**Alternative rejected:** Report-only intake until manager approval leaves suspect units sellable; permanent write-off on submission makes mistaken reports difficult to reverse.
+
+---
+
+## 2026-11-07 — Task #037: Cashier Remittance Design
+**Decision:** Use one remittance per business day and cashier rather than separate cashier business days.
+**Why:** It preserves the existing sale, return, and store verification model while allowing each cashier to finish independently.
+**Decision:** Enforce ownership and transitions in PostgreSQL functions and a sale insert trigger, with role checks repeated in Server Actions.
+**Why:** Hiding other cashiers in the UI alone would not protect direct requests. The business-day row lock serializes sale, remittance, reopen, and store submission operations.
+**Decision:** Remittance records the system-calculated sales total; it does not collect a physical cash count. Administrators alone may reopen a cashier record while the store day is open.
+**Decision:** Create the cashier's remittance row at their first sale and retain it through later role changes; block role/status changes while an open day remains unremitted.
+**Why:** Current staff roles can change, but past remittance ownership must remain stable and an inactive account cannot submit its own missing remittance.
+**Alternative rejected:** Let cashiers use the existing store-wide Submit for review function; it would close every cashier's sales.
+**User follow-up:** The cashier submission flow was confirmed working on 2026-11-07. No change to the cashier-versus-manager verification boundary was requested after the UI location was explained.
 
 ---
 

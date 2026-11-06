@@ -1,8 +1,8 @@
 # Pending Work
 
-## Current State Summary (Updated: 2026-09-21)
-- **Open items:** 7
-- **Highest priority:** Apply the latest hosted database migrations, then complete production deployment and visual acceptance
+## Current State Summary (Updated: 2026-11-07)
+- **Open items:** 9
+- **Highest priority:** Apply and accept the Product Issues migration, finish remaining cashier-remittance checks, then complete production deployment and visual acceptance
 - **Purpose:** Track work that cannot be completed until required hardware, credentials, assets, decisions, or external access become available
 
 ---
@@ -118,3 +118,35 @@
 - Related receipt totals remain valid after a permitted purge.
 - Dashboard Recent activity shows one row per sale or receiving receipt with the exact receipt reference.
 - Full Inventory activity remains item-level.
+
+---
+
+## PND-009 — Hosted Cashier Remittance Migration and Acceptance
+**Status:** Partially complete — cashier submission flow confirmed working by user; remaining scenarios pending
+**Added:** 2026-11-07
+**Reason:** Task #037 adds per-cashier remittance and a database sale guard; no local PostgreSQL service is available in this checkout.
+**Prerequisites:** Apply all earlier migrations, then `20261107000100_cashier_remittance.sql` to the hosted development project before deploying the updated app.
+**Acceptance criteria:**
+- User confirmed on 2026-11-07 that the cashier submission flow passed and is working in the interface; the exact environment and remaining scenarios were not specified.
+- Two cashiers with sales on the same day each see only their own sale details and totals in My Daily Sales.
+- One cashier remits; that cashier cannot confirm another sale, while the second cashier can continue selling.
+- Managers see both cashiers' statuses and cannot submit the store day until both have remitted.
+- Only an administrator can reopen a remittance while the store day is open; the cashier can then record a missed sale and remit again.
+- A duplicate remittance and an attempt to reopen after store submission are rejected.
+- Changing the role or deactivating a cashier with open, unremitted sales is rejected with an actionable message; a remitted cashier remains visible in management history after a later role change.
+- Managers and administrators can submit and verify the store day and review returns as before.
+
+---
+
+## PND-010 — Product Issues Hosted Migration and Acceptance
+**Status:** Pending hosted database migration and acceptance
+**Added:** 2026-11-07
+**Reason:** Product Issues requires the new protected database tables and stock-changing functions; no local PostgreSQL service is available in this checkout.
+**Prerequisites:** Apply `20261107000200_product_issues.sql` after `20261107000100_cashier_remittance.sql` to the hosted development database before deploying the matching app build.
+**Acceptance criteria:**
+- A cashier or inventory staff member reports one product with Damaged, Other issue, or a named Custom flag; only managers and administrators see resolution actions.
+- A report immediately removes exactly the affected quantity from the selected batch, or oldest available batches when none is selected; a concurrent sale cannot make stock negative.
+- Reports above available batch quantity and forged product/batch combinations are rejected without partial stock changes.
+- Management can confirm a loss without another stock deduction, or release the original units back to their source batches with a resolution note.
+- Duplicate resolution and release of archived or expired stock fail without partial restoration.
+- Report records, batch allocations, and stock adjustment history remain visible after resolution.

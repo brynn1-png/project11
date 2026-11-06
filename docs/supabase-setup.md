@@ -16,6 +16,10 @@ npx supabase db push
 
 The migrations create the application schema, role helpers, profile trigger, expiry validation, protected inventory read models, product registration, barcode aliases, atomic stock receiving, receipt-based sales, returns, business-day verification, reports, rate limits, indexes, grants, and Row-Level Security policies. `supabase/seed.sql` contains repeatable synthetic development data and must not be applied to a production database.
 
+Apply `20261107000100_cashier_remittance.sql` before using the cashier remittance UI on an existing hosted project. It creates per-cashier records and secured read/submit/reopen functions, blocks a cashier's later sale after remittance, and requires all cashiers with sales to remit before store-wide submission. Existing closed days are backfilled as remitted, while any open day with cashier sales still needs cashier remittance. Staff with unremitted open-day sales cannot be deactivated or changed to another role. Run the migration in filename order after every earlier migration; do not use `master.sql` for an existing database.
+
+Apply `20261107000200_product_issues.sql` after the remittance migration before using Product Issues. It adds protected issue reports and batch allocations, immediately isolates reported units, and permits management to confirm the loss or safely restore units to their original batches. The application will show a migration message until the new database functions are available.
+
 ## Master SQL installer
 
 `supabase/master.sql` is the complete database installer for a new, empty Supabase project. Open the project's SQL editor, paste the file, and run it once. The installer is transactional and stops before making changes if it detects an existing South Emerald schema.

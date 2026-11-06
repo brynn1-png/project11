@@ -23,21 +23,21 @@ Every Server Action is treated as a public entry point:
 | Login, per address | 30 per 15 minutes | Server Action + shared database counter |
 | Completed sales | 30 per minute | Database trigger |
 | Return requests | 20 per hour | Database trigger |
-| Inventory writes | 60 per 10 minutes | Database trigger |
+| Inventory writes and product issue reports | 60 per 10 minutes | Database function or trigger |
 | Permanent deletion | 10 per hour | Database trigger |
-| Verification and return reviews | 60 per hour | Database trigger |
+| Cashier remittance, issue resolution, verification, and return reviews | 60 per hour | Database function or trigger |
 | Reports | 60 per minute | Server Action + shared database counter |
 | Receipt/history views | 60 per minute | Server Action + shared database counter |
 | Sales lookups | 120 per minute | Server Action + shared database counter |
 | Inventory lookups | 120 per minute | Server Action + shared database counter |
 
-Write limits run in PostgreSQL triggers. An authenticated caller therefore cannot bypass them by calling a Supabase mutation RPC directly. Counters are atomic and shared across application instances. Raw email addresses and network addresses are not stored in the limiter table.
+Write limits run in PostgreSQL triggers or directly inside protected remittance and product-issue functions. An authenticated caller therefore cannot bypass them by calling a Supabase mutation RPC directly. Counters are atomic and shared across application instances. Raw email addresses and network addresses are not stored in the limiter table.
 
 Read RPCs remain protected by database roles and ownership rules. Direct PostgREST traffic is additionally subject to the Supabase project's platform-level quotas; configure project or gateway limits appropriate to the production plan.
 
 ## Deployment requirements
 
-1. Apply migrations through `20260921000800_endpoint_rate_limits.sql` before deploying the matching application build. The application fails closed when its shared limiter is unavailable.
+1. Apply migrations through `20261107000200_product_issues.sql` before deploying the matching application build. The new workflows fail closed until their database functions exist.
 2. Ensure the production reverse proxy replaces, rather than appends untrusted values to, `X-Forwarded-For`.
 3. For multiple Next.js instances, configure the same `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` on every instance.
 4. Monitor `RATE_LIMITED` database errors and repeated login failures. Do not log passwords, raw session tokens, or full payment details.

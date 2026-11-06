@@ -21,6 +21,7 @@ const GUARD_MESSAGES = [
   "The last active administrator cannot be demoted or deactivated.",
   "That staff account was not found.",
   "That account is no longer new.",
+  "Remit this cashier's open-day sales before changing their role or status.",
 ];
 
 function errorMessage(error: { message: string }, fallback: string) {

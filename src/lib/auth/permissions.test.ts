@@ -47,6 +47,22 @@ describe("role permissions", () => {
     expect(hasPermission("cashier", "sales:verify")).toBe(false);
   });
 
+  it("allows staff issue reports but only management issue resolution", () => {
+    for (const role of ["administrator", "manager", "inventory_staff", "cashier"] as const) {
+      expect(hasPermission(role, "issues:report")).toBe(true);
+    }
+    expect(hasPermission("administrator", "issues:resolve")).toBe(true);
+    expect(hasPermission("manager", "issues:resolve")).toBe(true);
+    expect(hasPermission("inventory_staff", "issues:resolve")).toBe(false);
+    expect(hasPermission("cashier", "issues:resolve")).toBe(false);
+  });
+
+  it("lets cashiers remit without granting store-wide verification", () => {
+    expect(hasPermission("cashier", "sales:remit")).toBe(true);
+    expect(hasPermission("cashier", "sales:verify")).toBe(false);
+    expect(hasPermission("inventory_staff", "sales:remit")).toBe(false);
+  });
+
   it("limits product management to administrators and managers", () => {
     expect(hasPermission("administrator", "products:manage")).toBe(true);
     expect(hasPermission("manager", "products:manage")).toBe(true);

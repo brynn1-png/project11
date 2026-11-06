@@ -27,7 +27,7 @@ This document describes the user-facing pages and the main paths between them in
 
 **Purpose:** Record a customer sale using a barcode scanner, camera scan, or manual product entry.
 
-**Flow:** Scan or enter products to build the cart, adjust quantities, enter cash received, and confirm the sale. The app validates available stock and records the sale; a completed sale produces a receipt that can be reviewed or printed. The scanner also has a price-check mode. Confirmed sales update inventory and become available in activity/history and reporting. If connectivity is unavailable, the sale cannot be confirmed against the live database.
+**Flow:** Scan or enter products to build the cart, adjust quantities, enter cash received, and confirm the sale. The app validates available stock and records the sale; a completed sale produces a receipt that can be reviewed or printed. The scanner also has a price-check mode. Confirmed sales update inventory and become available in activity/history and reporting. If connectivity is unavailable, or the cashier has already remitted that day, the sale cannot be confirmed.
 
 ### Returns
 
@@ -40,6 +40,12 @@ This document describes the user-facing pages and the main paths between them in
 **Purpose:** Record incoming inventory and its batch details.
 
 **Flow:** Search for or scan a product (or arrive from an alert/product shortcut), enter quantity and unit cost, and provide relevant batch, manufacture/expiry, delivery reference, and notes. For expiry-tracked products, each new delivery also sets the new expiry on every older batch with stock remaining; previous dates are recorded in the audit log. A delivery with an expiry earlier than an active batch's current expiry is rejected. Submit the receipt to update stock and create a traceable receiving record. If the product does not exist, users with product-management permission can jump to Products to register it. Receiving requires a live database connection.
+
+### Product Issues
+
+**Purpose:** Report damaged or questionable stock and prevent affected units from being sold while management reviews them.
+
+**Flow:** Search or scan a product, enter the affected quantity, optionally select the known batch, choose Damaged, Other issue, or Custom flag, and describe the problem. Submission immediately removes the units from available batches and creates a pending issue report. All active staff can see the shared report list. Administrators and managers add a resolution note to confirm the loss or return the same units to their batches. An archived product or expired batch cannot be returned to sellable stock.
 
 ### Stock Levels
 
@@ -55,9 +61,9 @@ This document describes the user-facing pages and the main paths between them in
 
 ### Daily Verification
 
-**Purpose:** Review business-day sales totals and resolve pending return requests.
+**Purpose:** Cashiers remit their own daily sales; managers and administrators review cashier remittances, business-day sales totals, and pending returns.
 
-**Flow:** Expand a day's record to load and inspect every completed sale, including cashier, receipt total, and line items. Review the day's summary and returns, then submit an open day for review or mark a submitted day verified. Any pending returns for that day must be reviewed first. Approve or reject each pending return here; only approved resellable items return to available inventory. A daily record is created automatically when the first sale is confirmed.
+**Flow:** A cashier opens **My Daily Sales**, reviews only their own completed receipts and total, then selects **Remit my sales** when their shift ends. That cashier cannot confirm another sale for the day unless an administrator reopens their remittance while the store day is open. Managers and administrators see each cashier's remittance in **Daily Verification**. After every cashier with sales has remitted, they can submit the store day for review and later mark it verified. Pending returns for that day must be reviewed first. Only managers and administrators approve or reject returns. A daily record is created automatically when the first sale is confirmed.
 
 ### Reports
 
@@ -81,13 +87,17 @@ Dashboard → Sales → scan/build cart → confirm payment → receipt. The sal
 
 Dashboard alert or Products → Receive Stock → select product → enter receipt and batch details → submit. The updated quantity is reflected in Stock Levels and the Dashboard.
 
+### Damaged or questionable stock
+
+Product Issues → select product and affected quantity → submit report → management confirms the loss or returns eligible units to stock. The report and stock movements remain in history.
+
 ### Return review
 
 Returns → select completed sale → choose item quantities/conditions → submit request → Daily Verification → approve or reject. Approved resellable quantities are returned to available stock.
 
 ### End-of-day control
 
-Daily Verification → review business-day totals and pending returns → submit the day for review → resolve outstanding returns → mark the day verified.
+My Daily Sales → each cashier reviews and remits their own sales → Daily Verification → management reviews all cashier remittances and submits the store day → resolves outstanding returns → marks the day verified.
 
 ## Notes on navigation and permissions
 

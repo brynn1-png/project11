@@ -1,11 +1,27 @@
 # Results Log
 
-## Current State Summary (Updated: 2026-10-01)
-- **Active Task:** Task #036 — Project PDF documentation via document-generator MCP
-- **Status:** 🟢 Done
-- **Latest Result:** `generated_documents/south-emerald-inventory-system-documentation_1790852741516.pdf` generated (22,117 bytes) and previewed
-- **Verification:** MCP server listed as `connected`; output file confirmed on disk by size and timestamp; content traced to actual repo sources (no app code touched); app build/tests not re-run because `src/` was unchanged
-- **Environment changed:** new file `opencode.json` added at repo root
+## Current State Summary (Updated: 2026-11-07)
+- **Active Task:** Task #038 — Product Issues reporting and stock isolation
+- **Status:** 🟢 Code complete; hosted migration and acceptance pending
+- **Latest Result:** Staff can report affected products with preset or custom flags; management can confirm the loss or release eligible units.
+- **Verification:** 113 tests passed; TypeScript, ESLint, production build, and master SQL check passed. SQL integration and browser acceptance remain pending.
+- **Environment changed:** new Product Issues migration and page on `codex/cashier-remittance`; no hosted database change from this task.
+
+---
+
+## 2026-11-07 — Task #038: Product Issues Result
+**Outcome:** Added report and batch-allocation records, immediate stock isolation, adjustment history, manager resolution, a staff form, shared report list, and pagination.
+**Verification:** Focused validation and role tests failed before implementation and passed afterward. Full Vitest suite passed 113/113; TypeScript, ESLint, production build, and generated master SQL check passed.
+**Review fixes:** Barcode Enter now finds the intended product, async responses cannot overwrite another product's batches, and older pending reports remain reachable through Load more.
+**Limit:** The new SQL functions have not been run against a database in this workspace; hosted migration and PND-010 acceptance remain required.
+
+---
+
+## 2026-11-07 — Task #037: Cashier Remittance Result
+**Outcome:** Added the per-cashier remittance migration, secured RPCs, sale and staff-account guards, administrator reopen path, role-aware Daily Verification UI, and documentation. Remittance ownership persists after a later role change.
+**Verification:** The targeted permission test failed before the new permission and passed afterward. Full Vitest suite passed 108/108 using a workspace-local TEMP path; TypeScript, ESLint, production build, and generated master SQL check passed.
+**Limit:** SQL transitions and two-cashier privacy behavior require hosted database/browser acceptance after applying the migration (PND-009). No hosted database was changed.
+**User acceptance:** On 2026-11-07, the user reported that the cashier submission path passed and is working in the interface. This does not establish the outcome of every PND-009 edge case.
 
 ---
 
