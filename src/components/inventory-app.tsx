@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   ArrowCounterClockwise, ArrowDown, ArrowUp, Bell, BookOpen, CaretRight, ChartBar,
@@ -28,6 +29,7 @@ import { groupActivityByReceipt, type ReceiptActivity } from "@/lib/activity-gro
 import { getStockAlerts, type StockAlert } from "@/lib/stock-alerts";
 import { formatQuantity, pluralizeUnit } from "@/lib/units";
 import { formatRole, hasPermission, type Permission } from "@/lib/auth/permissions";
+import { canViewDiagnostics } from "@/lib/diagnostics-core";
 import type { CurrentUser } from "@/lib/auth/current-user";
 import { APP_SHORT_NAME } from "@/lib/ui-copy";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -384,6 +386,7 @@ function Sidebar({ currentUser, view, open, onClose, onNavigate }: { currentUser
             {group.items.map((item) => { const Icon = item.icon; const active = view === item.id; return <button key={item.id} onClick={() => onNavigate(item.id)} className={cn("flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-xl px-3 text-left text-sm font-medium transition-colors", active ? "bg-[#f4e90b] text-[#173b27]" : "text-white/70 hover:bg-white/[.08] hover:text-white")}><Icon size={19} weight={active ? "fill" : "regular"} />{item.id === "sales-review" && currentUser.role === "cashier" ? "My Daily Sales" : item.label}</button>; })}
           </div>
         </section>)}
+        {canViewDiagnostics(currentUser) && <section className="mt-4" aria-label="Private administration"><p className="px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-white/45">Private administration</p><Link href="/diagnostics" className="mt-1 flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium text-white/70 hover:bg-white/[.08] hover:text-white"><Warning size={19} />Diagnostics</Link></section>}
       </nav>
       <div className="mt-4 border-t border-white/10 pt-4"><div className="mb-3 flex items-center gap-3 rounded-xl bg-white/[.055] p-3"><div className="grid size-9 place-items-center rounded-lg bg-white/10 text-xs font-bold">{initials(currentUser.fullName)}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{currentUser.fullName}</p><p className="text-xs text-white/45">{formatRole(currentUser.role)}</p></div></div><form action={logout}><button className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm text-white/60 hover:bg-white/[.07] hover:text-white" type="submit"><SignOut size={19} />Sign out</button></form></div>
     </aside>

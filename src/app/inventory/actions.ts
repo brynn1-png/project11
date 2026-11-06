@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { logFailure } from "@/lib/diagnostics";
 import { hasPermission } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { consumeRateLimit, databaseRateLimitMessage, rateLimitMessage } from "@/lib/security/rate-limit";
@@ -103,7 +104,7 @@ export async function listInventoryProductBatches(productId: string): Promise<{ 
   const { data, error } = await supabase.from("inventory_batches")
     .select("id, batch_number, quantity_remaining, expires_at")
     .eq("product_id", parsed.data).gt("quantity_remaining", 0).order("received_at");
-  if (error) return { ok: false, message: "Batch details could not be loaded." };
+  if (error) { await logFailure({ source: "server_action", operation: "loadInventoryBatches", error, actorId: user.id }); return { ok: false, message: "Batch details could not be loaded." }; }
   return { ok: true, batches: (data ?? []).map((row) => ({
     id: row.id, batchNumber: row.batch_number ?? "Unnumbered batch",
     quantityRemaining: Number(row.quantity_remaining), expiresAt: row.expires_at,
@@ -120,7 +121,7 @@ export async function updateInventoryProductExpiry(productId: string, expiresAt:
   const { data, error } = await supabase.rpc("update_inventory_product_expiry", {
     p_product_id: parsed.data.productId, p_expires_at: parsed.data.expiresAt,
   });
-  if (error) return { ok: false, message: errorMessage(error, "Expiry dates could not be updated. No changes were made.") };
+  if (error) { await logFailure({ source: "server_action", operation: "updateBatchExpiry", error, actorId: user.id }); return { ok: false, message: errorMessage(error, "Expiry dates could not be updated. No changes were made.") }; }
   revalidatePath("/");
   return { ok: true, updated: Number(data ?? 0) };
 }
@@ -138,7 +139,7 @@ export async function listInventoryCategories(): Promise<{ ok: true; categories:
     .is("archived_at", null)
     .order("name");
 
-  if (error) return { ok: false, message: "Categories could not be loaded." };
+  if (error) { await logFailure({ source: "server_action", operation: "loadCategories", error, actorId: user.id }); return { ok: false, message: "Categories could not be loaded." }; }
   return {
     ok: true,
     categories: (data ?? []).map((row) => ({
@@ -164,7 +165,7 @@ export async function createInventoryCategory(input: CategoryInput) {
     p_description: parsed.data.description || null,
     p_default_expiry_tracking: parsed.data.defaultExpiryTracking,
   });
-  if (error) return { ok: false as const, message: errorMessage(error, "The category could not be created.") };
+  if (error) { await logFailure({ source: "server_action", operation: "createCategory", error, actorId: user.id }); return { ok: false as const, message: errorMessage(error, "The category could not be created.") }; }
 
   const row = Array.isArray(data) ? data[0] : data;
   if (!row) return { ok: false as const, message: "The database did not return the new category." };
@@ -194,7 +195,7 @@ export async function updateInventoryCategory(categoryId: string, input: Categor
     p_description: parsed.data.description || null,
     p_default_expiry_tracking: parsed.data.defaultExpiryTracking,
   });
-  if (error) return { ok: false as const, message: errorMessage(error, "The category could not be updated.") };
+  if (error) { await logFailure({ source: "server_action", operation: "updateCategory", error, actorId: user.id }); return { ok: false as const, message: errorMessage(error, "The category could not be updated.") }; }
   const row = Array.isArray(data) ? data[0] : data;
   if (!row) return { ok: false as const, message: "The database did not return the updated category." };
   revalidatePath("/");
@@ -227,7 +228,7 @@ async function saveProduct(input: ProductInput, mode: "create" | "update") {
   };
   const { data, error } = await supabase.rpc(mode === "create" ? "create_inventory_product" : "update_inventory_product", params);
   if (error) {
-    console.error("Product save failed", error);
+    await logFailure({ source: "server_action", operation: mode === "create" ? "createProduct" : "updateProduct", error, actorId: user.id });
     return { ok: false as const, message: errorMessage(error, "The product could not be saved. No changes were made.") };
   }
 
@@ -276,7 +277,7 @@ export async function createInventoryProductWithInitialStock(input: ProductInput
   });
 
   if (error) {
-    console.error("Product registration with initial stock failed", error);
+    await logFailure({ source: "server_action", operation: "registerProductWithStock", error, actorId: user.id });
     return { ok: false as const, message: errorMessage(error, "The product and initial stock could not be saved. No changes were made.") };
   }
 
@@ -304,7 +305,7 @@ export async function listArchivedInventoryProducts(): Promise<{ ok: true; produ
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_archived_inventory_products");
   if (error) {
-    console.error("Archived products lookup failed", error);
+    await logFailure({ source: "server_action", operation: "loadArchivedProducts", error, actorId: user.id });
     return { ok: false, message: errorMessage(error, "Archived products could not be loaded.") };
   }
   return {
@@ -342,7 +343,7 @@ export async function archiveInventoryProduct(productId: string, reason: string,
     p_reason: parsedReason.data,
     p_confirm_stock_removal: parsedConfirmation.data,
   });
-  if (error) return { ok: false as const, message: errorMessage(error, "The product could not be archived.") };
+  if (error) { await logFailure({ source: "server_action", operation: "archiveProduct", error, actorId: user.id }); return { ok: false as const, message: errorMessage(error, "The product could not be archived.") }; }
   revalidatePath("/");
   return { ok: true as const };
 }
@@ -356,7 +357,7 @@ export async function restoreInventoryProduct(productId: string) {
   if (!parsed.success) return { ok: false as const, message: "Product identifier is invalid." };
   const supabase = await createClient();
   const { error } = await supabase.rpc("restore_inventory_product", { p_product_id: parsed.data });
-  if (error) return { ok: false as const, message: errorMessage(error, "The product could not be restored.") };
+  if (error) { await logFailure({ source: "server_action", operation: "restoreProduct", error, actorId: user.id }); return { ok: false as const, message: errorMessage(error, "The product could not be restored.") }; }
   revalidatePath("/");
   return { ok: true as const };
 }
@@ -375,7 +376,7 @@ export async function permanentlyDeleteArchivedProduct(productId: string, confir
     p_product_id: parsed.data,
     p_confirmation: parsedConfirmation.data,
   });
-  if (error) return { ok: false as const, message: errorMessage(error, "The archived product could not be permanently deleted.") };
+  if (error) { await logFailure({ source: "server_action", operation: "deleteArchivedProduct", error, actorId: user.id }); return { ok: false as const, message: errorMessage(error, "The archived product could not be permanently deleted.") }; }
   revalidatePath("/");
   return { ok: true as const };
 }
@@ -400,7 +401,7 @@ export async function receiveInventoryStock(input: ReceiveStockInput) {
     p_notes: parsed.data.notes || null,
   });
   if (error) {
-    console.error("Stock receipt failed", error);
+    await logFailure({ source: "server_action", operation: "receiveStock", error, actorId: user.id });
     return { ok: false as const, message: errorMessage(error, "Stock could not be received. Inventory was not changed.") };
   }
 

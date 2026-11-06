@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { logFailure } from "@/lib/diagnostics";
 import { hasPermission } from "@/lib/auth/permissions";
 import { consumeRateLimit, databaseRateLimitMessage, rateLimitMessage } from "@/lib/security/rate-limit";
 import { createClient } from "@/lib/supabase/server";
@@ -49,7 +50,7 @@ export async function loadIssueBatches(productId: string): Promise<{ ok: true; b
   if (!limit.allowed) return { ok: false, message: rateLimitMessage(limit) };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_product_issue_batches", { p_product_id: parsed.data });
-  if (error) return { ok: false, message: issueError(error, "Batch details could not be loaded.") };
+  if (error) { await logFailure({ source: "server_action", operation: "loadIssueBatches", error, actorId: user.id }); return { ok: false, message: issueError(error, "Batch details could not be loaded.") }; }
   return { ok: true, batches: ((data ?? []) as IssueBatchRow[]).map((row) => ({
     id: row.id, batchNumber: row.batch_number, quantityRemaining: Number(row.quantity_remaining), expiresAt: row.expires_at,
   })) };
@@ -64,7 +65,7 @@ export async function loadProductIssues(offset = 0): Promise<{ ok: true; reports
   if (!limit.allowed) return { ok: false, message: rateLimitMessage(limit) };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_product_issue_reports", { p_limit: 51, p_offset: parsedOffset.data });
-  if (error) return { ok: false, message: issueError(error, "Product issue reports could not be loaded.") };
+  if (error) { await logFailure({ source: "server_action", operation: "loadProductIssues", error, actorId: user.id }); return { ok: false, message: issueError(error, "Product issue reports could not be loaded.") }; }
   const rows = (data ?? []) as ProductIssueRow[];
   return { ok: true, hasMore: rows.length > 50, reports: rows.slice(0, 50).map((row) => ({
     id: row.id, productId: row.product_id, productCode: row.product_code, productName: row.product_name,
@@ -90,7 +91,7 @@ export async function submitProductIssue(input: ProductIssueInput): Promise<{ ok
     p_custom_flag: parsed.data.customFlag,
     p_description: parsed.data.description,
   });
-  if (error) return { ok: false, message: issueError(error, "The issue report could not be submitted. Stock was not changed.") };
+  if (error) { await logFailure({ source: "server_action", operation: "submitProductIssue", error, actorId: user.id }); return { ok: false, message: issueError(error, "The issue report could not be submitted. Stock was not changed.") }; }
   revalidatePath("/");
   return { ok: true, id: String(data) };
 }
@@ -104,7 +105,7 @@ export async function resolveProductIssue(input: IssueResolutionInput): Promise<
   const { error } = await supabase.rpc("resolve_product_issue", {
     p_issue_id: parsed.data.issueId, p_decision: parsed.data.decision, p_note: parsed.data.note,
   });
-  if (error) return { ok: false, message: issueError(error, "The issue report could not be resolved. Stock was not changed.") };
+  if (error) { await logFailure({ source: "server_action", operation: "resolveProductIssue", error, actorId: user.id }); return { ok: false, message: issueError(error, "The issue report could not be resolved. Stock was not changed.") }; }
   revalidatePath("/");
   return { ok: true };
 }

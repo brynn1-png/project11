@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { logFailure } from "@/lib/diagnostics";
 import { hasPermission, type AppRole } from "@/lib/auth/permissions";
 import { isSupabaseAdminConfigured } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -74,6 +75,7 @@ export async function createStaffAccount(
   });
 
   if (createError || !created?.user) {
+    await logFailure({ source: "server_action", operation: "createStaffAccount", error: createError ?? new Error("Auth did not return a created user"), actorId: user.id });
     if (createError?.message.includes("already") || createError?.message.includes("registered")) {
       return { ok: false, message: "An account already uses that email address." };
     }
@@ -95,6 +97,7 @@ export async function createStaffAccount(
   });
 
   if (roleError) {
+    await logFailure({ source: "server_action", operation: "createStaffAccount.applyRole", error: roleError, actorId: user.id });
     await admin.auth.admin.deleteUser(profileId);
     return { ok: false, message: errorMessage(roleError, "The account was created but its role could not be applied, so it was removed. Try again.") };
   }
@@ -123,7 +126,7 @@ export async function updateStaffAccount(
     p_status: parsed.data.status,
   });
 
-  if (error) return { ok: false, message: errorMessage(error, "The staff account could not be updated. Try again.") };
+  if (error) { await logFailure({ source: "server_action", operation: "updateStaffAccount", error, actorId: user.id }); return { ok: false, message: errorMessage(error, "The staff account could not be updated. Try again.") }; }
 
   revalidatePath("/");
   return { ok: true };

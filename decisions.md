@@ -1,10 +1,20 @@
 # Decision Log
 
 ## Current State Summary (Updated: 2026-11-07)
-- **Active Decision:** Isolate reported product-issue units immediately and require management resolution
+- **Active Decision:** Record server failures in a dedicated, restricted Diagnostics store
 - **Status:** 🟢 Approved by user
-- **Latest Decision:** Keep per-batch allocations so a released report restores its original units only when the product and batches remain eligible
-- **Open Questions:** Hosted SQL and browser acceptance remain pending; photos and supplier claims are outside the approved scope.
+- **Latest Decision:** Only the active administrator with Auth email `admin@gmail.com` can read the page and database records; server writes use the service-role key
+- **Open Questions:** Hosted SQL and browser acceptance remain pending for Product Issues and Diagnostics.
+
+---
+
+## 2026-11-07 — Task #039: Private Diagnostics Design
+**Decision:** Add a dedicated failure table instead of reusing business audit logs. Capture returned database errors in core operations and uncaught Next.js server errors; list them newest first with bounded operation search.
+**Why:** Business audit history and diagnostic failures differ in access, retention, and detail. Existing console output was not durable or searchable from the application.
+**Decision:** Enforce access in the route, data action, and database RLS using both active administrator role and the exact current Auth email `admin@gmail.com`.
+**Why:** UI hiding cannot secure a direct URL or database request; another administrator must also be excluded.
+**Decision:** Redact common credential formats, exclude raw request content, and fall back to server logs if diagnostic storage fails.
+**Tradeoff:** Free-text exceptions can contain unfamiliar secret formats; producers should avoid putting confidential values in error text. A database outage cannot be stored in the same database.
 
 ---
 

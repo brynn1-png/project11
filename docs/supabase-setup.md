@@ -20,6 +20,8 @@ Apply `20261107000100_cashier_remittance.sql` before using the cashier remittanc
 
 Apply `20261107000200_product_issues.sql` after the remittance migration before using Product Issues. It adds protected issue reports and batch allocations, immediately isolates reported units, and permits management to confirm the loss or safely restore units to their original batches. The application will show a migration message until the new database functions are available.
 
+Apply `20261107000300_failure_diagnostics.sql` next to enable the private Diagnostics page. Configure `SUPABASE_SERVICE_ROLE_KEY` in the server environment so the app can store failures. The page and database rows are readable only by an active administrator whose current Auth email is `admin@gmail.com`. This feature records failures after deployment; it cannot reconstruct older errors. To remove records older than 30 days, call `public.purge_failure_logs` with a cutoff timestamp using a service-role connection. No automatic cleanup is scheduled.
+
 ## Master SQL installer
 
 `supabase/master.sql` is the complete database installer for a new, empty Supabase project. Open the project's SQL editor, paste the file, and run it once. The installer is transactional and stops before making changes if it detects an existing South Emerald schema.

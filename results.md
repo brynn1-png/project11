@@ -1,11 +1,19 @@
 # Results Log
 
 ## Current State Summary (Updated: 2026-11-07)
-- **Active Task:** Task #038 — Product Issues reporting and stock isolation
+- **Active Task:** Task #039 — Private Diagnostics
 - **Status:** 🟢 Code complete; hosted migration and acceptance pending
-- **Latest Result:** Staff can report affected products with preset or custom flags; management can confirm the loss or release eligible units.
-- **Verification:** 113 tests passed; TypeScript, ESLint, production build, and master SQL check passed. SQL integration and browser acceptance remain pending.
-- **Environment changed:** new Product Issues migration and page on `codex/cashier-remittance`; no hosted database change from this task.
+- **Latest Result:** A private Diagnostics route records and displays server failures for the designated administrator.
+- **Verification:** 115 tests passed; TypeScript, ESLint, production build, and master SQL check passed. SQL integration and browser acceptance remain pending.
+- **Environment changed:** new Diagnostics migration and page on `codex/cashier-remittance`; no hosted database change from this task.
+
+---
+
+## 2026-11-07 — Task #039: Private Diagnostics Result
+**Outcome:** Added failure records with time, operation, reason, code, stack, and reference ID; captured core Server Action and uncaught Next.js server failures; added the restricted `/diagnostics` route with search and pagination.
+**Verification:** Focused security/redaction tests were run red then green. Full Vitest suite passed 115/115; TypeScript, ESLint, production build, and generated master SQL check passed. The first full test run hit a sandbox temporary-file `ENOENT`; rerunning with a workspace-local temp directory passed. The first build hit a generated-output `EPERM`; clearing only `.next` and rerunning passed.
+**Review fixes:** Redaction now covers Basic authorization and common access/refresh/client secret forms. Next.js error logging strips URL query values from operation names.
+**Limit:** Hosted migration, live RLS checks, and browser acceptance remain in PND-011; no local PostgreSQL service was available.
 
 ---
 

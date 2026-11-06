@@ -3,6 +3,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { logFailure } from "@/lib/diagnostics";
 import { buildLoginRateLimitIdentifier, readClientAddress } from "@/lib/security/rate-limit-key";
 
 export type RateLimitScope =
@@ -35,7 +36,7 @@ export async function consumeRateLimit(scope: RateLimitScope, identifier?: strin
   });
 
   if (error) {
-    console.error("Rate-limit verification failed", { scope, code: error.code, message: error.message });
+    await logFailure({ source: "server_action", operation: `consumeRateLimit.${scope}`, error });
     return { allowed: false, remaining: 0, retryAfterSeconds: 0, unavailable: true };
   }
 

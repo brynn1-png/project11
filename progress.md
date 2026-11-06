@@ -1,11 +1,24 @@
 # Progress Log
 
 ## Current State Summary (Updated: 2026-11-07)
-- **Active Task:** Task #038 — Product Issues reporting and stock isolation
+- **Active Task:** Task #039 — Private Diagnostics
 - **Status:** 🟢 Done in code; hosted database acceptance pending
-- **Next Action:** Apply `20261107000200_product_issues.sql` after prior migrations and complete PND-010 acceptance.
+- **Next Action:** Apply `20261107000300_failure_diagnostics.sql` after prior migrations, configure the server service-role key, and complete PND-011 acceptance.
 - **Blockers:** No local PostgreSQL service for SQL integration checks; hosted migration remains pending.
-- **Last Completed:** Task #038 code implementation on 2026-11-07
+- **Last Completed:** Task #039 code implementation on 2026-11-07
+
+---
+
+## 2026-11-07 — Task #039: Private Diagnostics
+**Status:** 🟢 Done in code; hosted acceptance pending
+**Summary:** Added durable server failure logging and a searchable, paginated `/diagnostics` page restricted to the active administrator at `admin@gmail.com`.
+**Steps completed:**
+- [x] Added a dedicated failure table, exact-email/role RLS, and a service-role-only retention function.
+- [x] Added credential redaction, a best-effort server logger, uncaught Next.js server error capture, and logging in core action failure paths.
+- [x] Added the private page, server-side access checks, sidebar link, and setup warning.
+- [x] Passed 115 tests, TypeScript, ESLint, production build, and master SQL generation check.
+- [ ] Apply hosted migration and complete direct database and browser acceptance in PND-011.
+**Notes:** Static review found and fixed missing secret patterns and a query-string leak in operation names. SQL was not executed locally.
 
 ---
 

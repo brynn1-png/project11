@@ -1,8 +1,8 @@
 # Pending Work
 
 ## Current State Summary (Updated: 2026-11-07)
-- **Open items:** 9
-- **Highest priority:** Apply and accept the Product Issues migration, finish remaining cashier-remittance checks, then complete production deployment and visual acceptance
+- **Open items:** 10
+- **Highest priority:** Apply and accept the Product Issues and Diagnostics migrations, finish remaining cashier-remittance checks, then complete production deployment and visual acceptance
 - **Purpose:** Track work that cannot be completed until required hardware, credentials, assets, decisions, or external access become available
 
 ---
@@ -150,3 +150,16 @@
 - Management can confirm a loss without another stock deduction, or release the original units back to their source batches with a resolution note.
 - Duplicate resolution and release of archived or expired stock fail without partial restoration.
 - Report records, batch allocations, and stock adjustment history remain visible after resolution.
+
+---
+
+## PND-011 — Diagnostics Hosted Migration and Acceptance
+**Status:** Pending hosted database migration and acceptance
+**Added:** 2026-11-07
+**Reason:** Diagnostics storage and its email-specific database policy require the new migration and a server-side service-role key; no local PostgreSQL service is available in this checkout.
+**Prerequisites:** Apply `20261107000300_failure_diagnostics.sql` after the Product Issues migration, configure `SUPABASE_SERVICE_ROLE_KEY` on the app server, and ensure `admin@gmail.com` has an active administrator profile.
+**Acceptance criteria:**
+- Trigger a safe, deliberate server failure and verify the page shows its operation, Manila timestamp, reason, code or stack when available, and reference ID.
+- Confirm a different administrator, manager, cashier, and unauthenticated visitor cannot open `/diagnostics` or read `failure_logs` directly.
+- Confirm a secret-looking error is redacted before storage and the original operation still returns its normal result when diagnostic storage fails.
+- Verify search, pagination, and the server-log fallback when the service-role key or database is unavailable.

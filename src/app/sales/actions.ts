@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { logFailure } from "@/lib/diagnostics";
 import { hasPermission } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { consumeRateLimit, databaseRateLimitMessage, rateLimitMessage } from "@/lib/security/rate-limit";
@@ -50,7 +51,7 @@ export async function recordSale(input: RecordSaleInput): Promise<RecordSaleResu
   });
 
   if (error) {
-    console.error("Sale confirmation failed", error);
+    await logFailure({ source: "server_action", operation: "recordSale", error, actorId: user.id });
     const limited = databaseRateLimitMessage(error);
     if (limited) return { ok: false, message: limited };
     if (error.message.includes("p_cash_received") || error.message.includes("schema cache")) return { ok: false, message: "Apply the latest database migration before recording cash payments." };
@@ -100,6 +101,7 @@ export async function findSaleForReturn(saleNumber: number): Promise<{ ok: true;
   if (!limit.allowed) return { ok: false, message: rateLimitMessage(limit) };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_sale_for_return", { p_sale_number: saleNumber });
+  if (error) await logFailure({ source: "server_action", operation: "findSaleForReturn", error, actorId: user.id });
   if (error || !data?.length) return { ok: false, message: "No completed sale was found with that number." };
   return { ok: true, items: (data as ReturnableSaleRow[]).map((row) => ({
     saleItemId: row.sale_item_id,
@@ -133,7 +135,7 @@ export async function listRecentSales(): Promise<{ ok: true; sales: RecentSaleSu
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_recent_sales", { p_limit: 50 });
   if (error) {
-    console.error("Recent sales lookup failed", error);
+    await logFailure({ source: "server_action", operation: "getRecentSales", error, actorId: user.id });
     return { ok: false, message: "Recent sales could not be loaded. You can still search by sale number." };
   }
 
@@ -183,7 +185,7 @@ export async function requestSaleReturn(input: z.infer<typeof returnRequestSchem
     p_notes: parsed.data.notes || null,
   });
   if (error) {
-    console.error("Return request failed", error);
+    await logFailure({ source: "server_action", operation: "requestSaleReturn", error, actorId: user.id });
     const limited = databaseRateLimitMessage(error);
     if (limited) return { ok: false, message: limited };
     return { ok: false, message: error.message.includes("exceeds") ? error.message : "The return request could not be recorded." };
@@ -210,7 +212,7 @@ export async function loadBusinessDaySales(id: string): Promise<{ ok: true; sale
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_business_day_sales", { p_business_day_id: parsed.data });
   if (error) {
-    console.error("Business day sales lookup failed", error);
+    await logFailure({ source: "server_action", operation: "getBusinessDaySales", error, actorId: user.id });
     return { ok: false, message: "Sales for this day could not be loaded." };
   }
   return { ok: true, sales: ((data ?? []) as BusinessDaySaleRow[]).map((row) => ({
@@ -232,7 +234,10 @@ export async function loadSalesVerification(): Promise<{ days: BusinessDaySummar
     canVerify ? supabase.rpc("get_business_day_summaries", { p_limit: 14 }) : Promise.resolve({ data: [], error: null }),
     canVerify ? supabase.rpc("get_pending_return_summaries") : Promise.resolve({ data: [], error: null }),
   ]);
-  if (remittancesResult.error || daysResult.error || returnsResult.error) return { days: [], remittances: [], returns: [], error: "Daily verification data could not be loaded. Apply the latest database migration if this feature was just updated." };
+  if (remittancesResult.error || daysResult.error || returnsResult.error) {
+    await Promise.all([remittancesResult.error, daysResult.error, returnsResult.error].filter((error) => error !== null).map((error) => logFailure({ source: "server_action", operation: "loadSalesVerification", error, actorId: user.id })));
+    return { days: [], remittances: [], returns: [], error: "Daily verification data could not be loaded. Apply the latest database migration if this feature was just updated." };
+  }
   return {
     days: ((daysResult.data ?? []) as BusinessDayRow[]).map((row) => ({ id: row.id, businessDate: row.business_date, status: row.status, saleCount: Number(row.sale_count), itemCount: Number(row.item_count), grossTotal: Number(row.gross_total), returnCount: Number(row.return_count) })),
     remittances: ((remittancesResult.data ?? []) as CashierRemittanceRow[]).map((row) => ({ businessDayId: row.business_day_id, businessDate: row.business_date, storeStatus: row.store_status, cashierId: row.cashier_id, cashierName: row.cashier_name, saleCount: Number(row.sale_count), itemCount: Number(row.item_count), grossTotal: Number(row.gross_total), remittedAt: row.remitted_at, canReopen: row.can_reopen })),
@@ -247,7 +252,7 @@ export async function submitCashierRemittance(dayId: string) {
   if (!parsed.success) return { ok: false, message: "Daily sales record is invalid." };
   const supabase = await createClient();
   const { error } = await supabase.rpc("submit_cashier_remittance", { p_business_day_id: parsed.data });
-  if (error) return { ok: false, message: databaseRateLimitMessage(error) ?? error.message };
+  if (error) { await logFailure({ source: "server_action", operation: "submitCashierRemittance", error, actorId: user.id }); return { ok: false, message: databaseRateLimitMessage(error) ?? error.message }; }
   revalidatePath("/");
   return { ok: true, message: "Your daily sales have been remitted for review." };
 }
@@ -260,7 +265,7 @@ export async function reopenCashierRemittance(dayId: string, cashierId: string) 
   if (!day.success || !cashier.success) return { ok: false, message: "Cashier remittance request is invalid." };
   const supabase = await createClient();
   const { error } = await supabase.rpc("reopen_cashier_remittance", { p_business_day_id: day.data, p_cashier_id: cashier.data });
-  if (error) return { ok: false, message: databaseRateLimitMessage(error) ?? error.message };
+  if (error) { await logFailure({ source: "server_action", operation: "reopenCashierRemittance", error, actorId: user.id }); return { ok: false, message: databaseRateLimitMessage(error) ?? error.message }; }
   revalidatePath("/");
   return { ok: true, message: "Cashier remittance reopened. The cashier can record a missed sale." };
 }
@@ -273,7 +278,7 @@ export async function changeBusinessDayStatus(id: string, action: "submit" | "ve
   if (!parsed.success || !parsedAction.success) return { ok: false, message: "Daily sales verification request is invalid." };
   const supabase = await createClient();
   const { error } = await supabase.rpc(parsedAction.data === "submit" ? "submit_business_day" : "verify_business_day", { p_business_day_id: parsed.data });
-  if (error) return { ok: false, message: databaseRateLimitMessage(error) ?? error.message };
+  if (error) { await logFailure({ source: "server_action", operation: parsedAction.data === "submit" ? "submitBusinessDay" : "verifyBusinessDay", error, actorId: user.id }); return { ok: false, message: databaseRateLimitMessage(error) ?? error.message }; }
   revalidatePath("/");
   return { ok: true, message: parsedAction.data === "submit" ? "Daily sales record submitted for review." : "Daily sales record verified." };
 }
@@ -286,7 +291,7 @@ export async function reviewSaleReturn(id: string, approve: boolean) {
   if (!parsed.success || !parsedApproval.success) return { ok: false, message: "Return review request is invalid." };
   const supabase = await createClient();
   const { error } = await supabase.rpc("review_sale_return", { p_return_id: parsed.data, p_approve: parsedApproval.data });
-  if (error) return { ok: false, message: databaseRateLimitMessage(error) ?? error.message };
+  if (error) { await logFailure({ source: "server_action", operation: "reviewSaleReturn", error, actorId: user.id }); return { ok: false, message: databaseRateLimitMessage(error) ?? error.message }; }
   revalidatePath("/");
   return { ok: true, message: parsedApproval.data ? "Return approved and eligible stock restored." : "Return rejected." };
 }

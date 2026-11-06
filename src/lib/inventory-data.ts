@@ -2,6 +2,7 @@ import "server-only";
 
 import type { AppRole } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
+import { logFailure } from "@/lib/diagnostics";
 import type { Product, StockTransaction, UserProfile } from "@/lib/types";
 
 type CatalogRow = {
@@ -69,7 +70,7 @@ export async function getInventorySnapshot(role: AppRole): Promise<InventorySnap
 
   const inventoryErrors = [catalogResult.error, activityResult.error].filter(Boolean);
   if (inventoryErrors.length > 0) {
-    console.error("Unable to load inventory snapshot", inventoryErrors);
+    await Promise.all(inventoryErrors.map((error) => logFailure({ source: "server_action", operation: "getInventorySnapshot", error })));
     return {
       products: [],
       transactions: [],
@@ -87,7 +88,7 @@ export async function getInventorySnapshot(role: AppRole): Promise<InventorySnap
   }
 
   if (profilesResult.error) {
-    console.error("Unable to load staff accounts", profilesResult.error);
+    await logFailure({ source: "server_action", operation: "getInventorySnapshot.staffAccounts", error: profilesResult.error });
   }
 
   const products = ((catalogResult.data ?? []) as CatalogRow[]).map((row) => ({

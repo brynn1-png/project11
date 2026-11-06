@@ -77,6 +77,12 @@ This document describes the user-facing pages and the main paths between them in
 
 **Flow:** Open from the Administration navigation group when permitted, then review the staff list. This view is read-only in the current interface; account creation and role changes are not provided here.
 
+### Diagnostics
+
+**Purpose:** Find when a server operation failed and read its recorded reason and reference ID.
+
+**Flow:** The active administrator signed in as `admin@gmail.com` opens **Diagnostics** from Private administration or directly at `/diagnostics`. Search by function or operation name, open a record for the error code and stack when available, and load older records as needed. Browser-only failures and failures before deployment are outside this page's coverage. If database logging is unavailable, inspect server logs using the reference ID.
+
 ## Common end-to-end paths
 
 ### Daily sales

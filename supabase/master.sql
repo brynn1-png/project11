@@ -13,7 +13,7 @@
 --   Use the ordered migrations for upgrades to an existing database.
 --   Development seed and reset scripts are intentionally excluded.
 --
--- Source migrations (25):
+-- Source migrations (26):
 --   20260915000100_initial_production_schema.sql  sha256:3393480cec6722a317eac49cf501225e7c691f22569050cf4506ced1c34b539a
 --   20260915000200_inventory_read_models.sql  sha256:86bb09e0d3da6b8e6d8479be6808637649d2f3bb9ff97a51d83a15906e0a7af2
 --   20260915000300_sales_workflow.sql  sha256:5f439ccb85b7bc949e47a7e1503313de0165b3ee683a8206d9fabe4d547b5963
@@ -37,8 +37,9 @@
 --   20260924000100_business_day_sale_details.sql  sha256:cec491fee791abb2b357c09f37fb16744e6bc371371f71a29d686c41391f9963
 --   20260930000100_staff_account_management.sql  sha256:1921fd0fd38ed569758688389b262f9ad561f4d425efc9cb22e45eca992541bb
 --   20261012000100_batch_expiry_extensions.sql  sha256:70136891baa2762ff1e0c7e84cadc2200945b5951fd5c385aaf265a3f02d5206
---   20261107000100_cashier_remittance.sql  sha256:1897b9b920e4d11ade231b7061bd8dc7b899aa9ca346be1176e6e40ab8447e04
---   20261107000200_product_issues.sql  sha256:d2c938e63d275da96848b578b9733bdab2348263f444275c95a3a0ec4fc37004
+--   20261107000100_cashier_remittance.sql  sha256:2d7fc5a8b57343676572603bafa58bd96a27025fe82315fc1b674ac8a3c34419
+--   20261107000200_product_issues.sql  sha256:2cc4b68ffbee228f224755594bd040d99463a107532b80d926cc5c0022245488
+--   20261107000300_failure_diagnostics.sql  sha256:5766e939bf173e3acc09d40b725ef9087d9a11e4a78cf19c1b134838b2e35286
 
 begin;
 
@@ -4783,6 +4784,69 @@ grant execute on function public.get_product_issue_batches(uuid) to authenticate
 grant execute on function public.get_product_issue_reports(integer, integer) to authenticated;
 grant execute on function public.submit_product_issue(uuid, uuid, integer, text, text, text) to authenticated;
 grant execute on function public.resolve_product_issue(uuid, text, text) to authenticated;
+
+-- ============================================================================
+-- Migration: 20261107000300_failure_diagnostics.sql
+-- ============================================================================
+
+create table public.failure_logs (
+  id uuid primary key default gen_random_uuid(),
+  occurred_at timestamptz not null default now(),
+  source text not null check (source in ('server_action', 'next_server')),
+  operation text not null check (char_length(operation) between 1 and 160),
+  reason text not null check (char_length(reason) between 1 and 2000),
+  error_code text check (error_code is null or char_length(error_code) <= 80),
+  stack text check (stack is null or char_length(stack) <= 4000),
+  reference_id uuid not null unique,
+  actor_id uuid references public.profiles (id) on delete set null
+);
+
+create index failure_logs_occurred_at_idx on public.failure_logs (occurred_at desc, id desc);
+create index failure_logs_operation_idx on public.failure_logs (operation);
+
+create function public.is_diagnostics_owner()
+returns boolean
+language sql stable security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from auth.users u
+    join public.profiles p on p.id = u.id
+    where u.id = (select auth.uid())
+      and lower(u.email) = 'admin@gmail.com'
+      and p.role = 'administrator'::public.app_role
+      and p.status = 'active'
+  );
+$$;
+
+alter table public.failure_logs enable row level security;
+revoke all on public.failure_logs from public, anon, authenticated;
+grant select on public.failure_logs to authenticated;
+create policy failure_logs_owner_select on public.failure_logs
+for select to authenticated using ((select public.is_diagnostics_owner()));
+
+revoke execute on function public.is_diagnostics_owner() from public, anon;
+grant execute on function public.is_diagnostics_owner() to authenticated;
+
+create function public.purge_failure_logs(p_before timestamptz)
+returns bigint
+language plpgsql security definer
+set search_path = ''
+as $$
+declare
+  v_count bigint;
+begin
+  if p_before is null or p_before > now() - interval '30 days' then
+    raise exception 'Only failure logs older than 30 days can be purged.';
+  end if;
+  delete from public.failure_logs where occurred_at < p_before;
+  get diagnostics v_count = row_count;
+  return v_count;
+end;
+$$;
+revoke execute on function public.purge_failure_logs(timestamptz) from public, anon, authenticated;
+grant execute on function public.purge_failure_logs(timestamptz) to service_role;
 
 -- Ensure PostgREST refreshes its API schema after the transaction commits.
 notify pgrst, 'reload schema';

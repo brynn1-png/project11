@@ -1,6 +1,7 @@
 "use server";
 
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { logFailure } from "@/lib/diagnostics";
 import { hasPermission } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { consumeRateLimit, rateLimitMessage } from "@/lib/security/rate-limit";
@@ -78,7 +79,7 @@ export async function loadTransactionHistory(): Promise<{ receipts: ReceiptHisto
     supabase.rpc("get_sales_return_history", { p_limit: 100 }),
   ]);
   if (receiptResult.error || returnResult.error) {
-    console.error("Transaction history lookup failed", receiptResult.error ?? returnResult.error);
+    await logFailure({ source: "server_action", operation: "loadTransactionHistory", error: receiptResult.error ?? returnResult.error, actorId: user.id });
     return { receipts: [], returns: [], error: "Apply the latest database migration to load receipt and return history." };
   }
 

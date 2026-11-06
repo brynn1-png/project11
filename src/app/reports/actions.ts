@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { logFailure } from "@/lib/diagnostics";
 import { hasPermission } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { consumeRateLimit, rateLimitMessage } from "@/lib/security/rate-limit";
@@ -68,7 +69,7 @@ export async function loadSalesReport(input: { startDate: string; endDate: strin
     p_end_date: parsed.data.endDate,
   });
   if (error) {
-    console.error("Sales report lookup failed", error);
+    await logFailure({ source: "server_action", operation: "loadSalesReport", error, actorId: user.id });
     return { ok: false as const, message: error.message.includes("schema cache") ? "Apply the latest database migration to use sales reports." : "Sales report data could not be loaded." };
   }
 
@@ -134,7 +135,7 @@ export async function loadStockMovementReport(input: { startDate: string; endDat
     p_end_date: parsed.data.endDate,
   });
   if (error) {
-    console.error("Stock movement report lookup failed", error);
+    await logFailure({ source: "server_action", operation: "loadStockMovementReport", error, actorId: user.id });
     return { ok: false as const, message: error.message.includes("schema cache") ? "Apply the latest database migration to use stock movement reports." : "Stock movement could not be loaded." };
   }
 
@@ -197,7 +198,7 @@ export async function loadExpiringInventoryReport(input: { asOf: string; daysAhe
     p_days_ahead: parsed.data.daysAhead,
   });
   if (error) {
-    console.error("Expiring inventory report lookup failed", error);
+    await logFailure({ source: "server_action", operation: "loadExpiringInventoryReport", error, actorId: user.id });
     return { ok: false as const, message: error.message.includes("schema cache") ? "Apply the latest database migration to use expiry reports." : "Expiring inventory could not be loaded." };
   }
 
